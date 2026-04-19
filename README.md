@@ -5,7 +5,7 @@
     - [High Performance Block Cache](#High-Performance-Block-Cache)
     - [Security](#Security)
  - How To Use/Test
-    - [Compilation](#Compilation)
+    - [Compilation](#⚙️-Compilation)
     - [Testing](#Testing)
 
 
