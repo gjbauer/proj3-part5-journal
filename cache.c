@@ -71,12 +71,9 @@ get_block(DiskInterface* disk, cache *cache, uint64_t inum, uint64_t pnum)
 		return cache->cache[index].page_data;
 	} else {
         // Block found in cache - move it to front of LRU list (most recently used)
-        if (cache->lru_size > 1)
-        {
-            int cache_index = lru_pop(cache, &cache->cache[rv].lru_pos);
-            cache->cache[rv].lru_pos = lru_push(cache, cache_index);
-            cache->lru = cache->cache[rv].lru_pos;
-        }
+        int cache_index = lru_pop(cache, &cache->cache[rv].lru_pos);
+        cache->cache[rv].lru_pos = lru_push(cache, cache_index);
+        cache->lru = cache->cache[rv].lru_pos;
 
 		return cache->cache[rv].page_data;
 	}

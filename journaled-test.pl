@@ -224,18 +224,16 @@ ok($huge2 eq $right, "Read with offset & length");
 system("mkdir -p mnt/dir1/dir2/dir3/dir4/dir5");
 my $hi0 = "hello there";
 write_text("dir1/dir2/dir3/dir4/dir5/hello.txt", $hi0);
+my $hi1 = read_text("dir1/dir2/dir3/dir4/dir5/hello.txt");
+ok($hi0 eq $hi1, "nested directories");
 
 kill_mount($pid);
 unmount();
 $pid = mount();
 
-my $hi1 = read_text("dir1/dir2/dir3/dir4/dir5/hello.txt");
-ok($hi0 eq $hi1, "nested directories");
+ok(-f "dir1/dir2/dir3/dir4/dir5/hello.txt", "file in nested directories exists after remount");
 
 system("mkdir mnt/numbers");
-for my $ii (1..50) {
-    write_text("numbers/$ii.num", "$ii");
-}
 
 kill_mount($pid);
 unmount();
@@ -243,6 +241,10 @@ $pid = mount();
 
 my $nn = `ls mnt/numbers | wc -l`;
 ok($nn == 50, "created 50 files");
+
+for my $ii (1..50) {
+    write_text("numbers/$ii.num", "$ii");
+}
 
 for my $ii (1..5) {
     my $xx = $ii * 10;

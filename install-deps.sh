@@ -61,6 +61,7 @@ case "$OS" in
     Darwin)
 	echo "Operating System: macOS"
 	brew install macfuse
+    sudo cpanm Proc::Background
 	;;
     FreeBSD)
 	echo "Operating System: FreeBSD"
