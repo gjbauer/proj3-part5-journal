@@ -8,7 +8,7 @@ use IO::Handle;
 # To capture process PID
 use Proc::Background;
 
-ok(!-e "nbtrfs", "no binaries");
+ok(!-e "fuse", "no binaries");
 
 system("(make clean 2>&1) > /dev/null");
 
