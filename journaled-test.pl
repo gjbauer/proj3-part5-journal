@@ -33,7 +33,7 @@ sub mount {
         open(STDOUT, ">&", $fh) or die "Can't dup STDOUT: $!";
         open(STDERR, ">&", $fh) or die "Can't dup STDERR: $!";
         
-        # 3. Replace child process with 'make'
+        # 3. Replace child process with FUSE mount
         exec("./fuse", "-s", "-f", "mnt", "my.img") or die "Exec failed: $!";
     }
 
