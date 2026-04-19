@@ -5,7 +5,7 @@ use warnings FATAL => 'all';
 use Test::Simple tests => 29;
 use IO::Handle;
 
-ok(!-e "nbtrfs", "no binaries");
+ok(!-e "fuse", "no binaries");
 
 system("(make clean 2>&1) > /dev/null");
 
@@ -15,12 +15,12 @@ system("(mkdir mnt 2>&1) > /dev/null");
 
 sub mount {
     system("(make mount 2>&1) >> test.log &");
-    sleep 3;
+    sleep 1;
 }
 
 sub unmount {
     system("(sudo umount mnt 2>&1) >> test.log");
-    sleep 3;
+    sleep 1;
 }
 
 sub write_text {

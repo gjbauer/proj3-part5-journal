@@ -2,7 +2,7 @@
 use 5.16.0;
 use warnings FATAL => 'all';
 
-use Test::Simple tests => 29;
+use Test::Simple tests => 32;
 use IO::Handle;
 
 # To capture process PID
@@ -38,7 +38,7 @@ sub mount {
     }
 
     # PARENT PROCESS
-    sleep 3;
+    sleep 1;
     
     return $pid;
 }
@@ -47,12 +47,11 @@ sub kill_mount {
     my ($pid) = @_;
     kill 9, $pid;
     waitpid($pid, 0);  # Reap the zombie
-    sleep 2;
 }
 
 sub unmount {
     system("(sudo umount -f mnt 2>&1) >> test.log");
-    sleep 3;
+    sleep 1;
 }
 
 sub write_text {
@@ -153,13 +152,21 @@ $msg3 = read_text("two.txt");
 say "# '$msg2' eq '$msg3'?";
 ok($msg2 eq $msg3, "Read back data2 correctly again.");
 
-system("rm -f mnt/one.txt");
-$files = `ls mnt`;
-ok($files !~ /one\.txt/, "deleted one.txt");
+my $exit_status = system("rm mnt/one.txt") >> 8;
+ok($exit_status eq 0 && $files !~ /one\.txt/, "deleted one.txt");
 
-my $exit_status = system("mv mnt/two.txt mnt/abc.txt") >> 8;
-$files = `ls mnt`;
+kill_mount($pid);
+unmount();
+$pid = mount();
+
+if ($exit_status eq 0) {
+    $files = `ls mnt`;
+    ok($files !~ /one\.txt/, "one.txt is not present after re-mount");
+}
+
+$exit_status = system("mv mnt/two.txt mnt/abc.txt") >> 8;
 ok($exit_status eq 0, "moved two.txt");
+$files = `ls mnt`;
 ok($files =~ /abc\.txt/, "have abc.txt");
 
 my $msg4 = read_text("abc.txt");
@@ -173,6 +180,14 @@ my $msg5 = read_text("def.txt");
 say "# '$msg2' eq '$msg5'?";
 ok($msg2 eq $msg5, "Read back data after link.");
 
+kill_mount($pid);
+unmount();
+$pid = mount();
+
+$msg5 = read_text("def.txt");
+say "# '$msg2' eq '$msg5'?";
+ok($msg2 eq $msg5, "Read back link data after remount.");
+
 system("rm -f mnt/abc.txt");
 my $msg6 = read_text("def.txt");
 say "# '$msg2' eq '$msg6'?";
@@ -181,6 +196,12 @@ ok($msg2 eq $msg6, "Read back data after other link deleted.");
 system("mkdir mnt/foo");
 ok(-d "mnt/foo", "Made a directory");
 
+kill_mount($pid);
+unmount();
+$pid = mount();
+
+ok(-d "mnt/foo", "Directory persists after remount");
+
 system("cp mnt/def.txt mnt/foo/abc.txt");
 my $msg7 = read_text("foo/abc.txt");
 say "# '$msg2' eq '$msg7'?";
@@ -188,6 +209,11 @@ ok($msg2 eq $msg7, "Read back data from copy in subdir.");
 
 my $huge0 = "=This string is fourty characters long.=" x 1000;
 write_text("40k.txt", $huge0);
+
+kill_mount($pid);
+unmount();
+$pid = mount();
+
 my $huge1 = read_text("40k.txt");
 ok($huge0 eq $huge1, "Read back 40k correctly.");
 
@@ -198,6 +224,11 @@ ok($huge2 eq $right, "Read with offset & length");
 system("mkdir -p mnt/dir1/dir2/dir3/dir4/dir5");
 my $hi0 = "hello there";
 write_text("dir1/dir2/dir3/dir4/dir5/hello.txt", $hi0);
+
+kill_mount($pid);
+unmount();
+$pid = mount();
+
 my $hi1 = read_text("dir1/dir2/dir3/dir4/dir5/hello.txt");
 ok($hi0 eq $hi1, "nested directories");
 
@@ -205,6 +236,10 @@ system("mkdir mnt/numbers");
 for my $ii (1..50) {
     write_text("numbers/$ii.num", "$ii");
 }
+
+kill_mount($pid);
+unmount();
+$pid = mount();
 
 my $nn = `ls mnt/numbers | wc -l`;
 ok($nn == 50, "created 50 files");
@@ -222,9 +257,12 @@ for my $ii (1..4) {
 
 kill_mount($pid);
 unmount();
+$pid = mount();
 
 ok(!-d "mnt/numbers", "numbers dir doesn't exist after umount");
 
+kill_mount($pid);
+unmount();
 mount();
 
 my $mm = `ls mnt/numbers | wc -l`;
