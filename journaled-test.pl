@@ -2,11 +2,8 @@
 use 5.16.0;
 use warnings FATAL => 'all';
 
-use Test::Simple tests => 57;
+use Test::Simple tests => 58;
 use IO::Handle;
-
-# To capture process PID
-use Proc::Background;
 
 ok(!-e "fuse", "no binaries");
 
