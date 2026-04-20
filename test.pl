@@ -2,7 +2,7 @@
 use 5.16.0;
 use warnings FATAL => 'all';
 
-use Test::Simple tests => 29;
+use Test::Simple tests => 54;
 use IO::Handle;
 
 ok(!-e "fuse", "no binaries");
@@ -169,14 +169,14 @@ my $hi1 = read_text("dir1/dir2/dir3/dir4/dir5/hello.txt");
 ok($hi0 eq $hi1, "nested directories");
 
 system("mkdir mnt/numbers");
-for my $ii (1..50) {
+for my $ii (1..300) {
     write_text("numbers/$ii.num", "$ii");
 }
 
 my $nn = `ls mnt/numbers | wc -l`;
-ok($nn == 50, "created 50 files");
+ok($nn == 300, "created 300 files");
 
-for my $ii (1..5) {
+for my $ii (1..30) {
     my $xx = $ii * 10;
     my $yy = read_text("numbers/$xx.num");
     ok($yy =~ /^\d+$/ && $xx == $yy, "check value $xx");
@@ -194,7 +194,7 @@ ok(!-d "mnt/numbers", "numbers dir doesn't exist after umount");
 mount();
 
 my $mm = `ls mnt/numbers | wc -l`;
-ok($mm == 46, "deleted 4 files");
+ok($mm == 296, "deleted 4 files");
 
 unmount();
 

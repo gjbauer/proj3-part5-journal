@@ -5,7 +5,7 @@
     - [High Performance Block Cache](#High-Performance-Block-Cache)
     - [Security](#Security)
  - How To Use/Test
-    - [Compilation](#⚙️-Compilation)
+    - [Compilation](#Compilation)
     - [Testing](#Testing)
 
 
@@ -49,7 +49,7 @@ The implementation prioritizes data sanitization upon freeing memory to prevent 
 
 ---
 
-## ⚙️ Compilation
+## Compilation
 
 The project uses a simple `GNUmakefile` to build on Linux and macOS, as well as a `BSDmakefile` for compilation on FreeBSD. The project requires the `bsd` library for `arc4random_buf` when compiling on Linux.
 

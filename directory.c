@@ -122,27 +122,31 @@ int directory_remove_entry(DiskInterface* disk, cache *cache, const char *path, 
                 fprintf(stderr, "ERROR: Not a data type block!!\n");
                 goto free_pair;
             }
-            if (0 == count)
+            if (0 == i)
             {
                 db = (DirectoryBlock*) ( block_type + 1 );
                 entry = (DirEntry*) ( db + 1 );
                 number_of_entries = db->entry_count;
             }
             else entry = (DirEntry*) ( block_type + 1 );
-            if (db->entry_count == count) break;
+            if (number_of_entries == count) break;
             uint16_t entries_per_block = USABLE_BLOCK_SIZE / sizeof(struct DirEntry);
             for (uint16_t j=0; j < entries_per_block ; j++)
             {
                 if (!strcmp(entry->name, name))
                 {
                     entry->active = false;
-                    db->entry_count--;
+                    number_of_entries--;
                     inode_read(disk, cache, entry->inode_number, &file_node);
                     if (1 == file_node.reference_count)
                     {
                         if (inode_free(disk, cache, entry->inode_number))
                             goto free_pair;
-                        btree_delete(disk, cache, pair->btree_block, path_hash(name));
+                        BTreeNode tree_node;
+                        uint64_t tree_node_block = btree_search(disk, cache, pair->btree_block, path_hash(name));
+                        btree_node_read(disk, cache, tree_node_block, &tree_node);
+                        btree_delete(disk, cache, tree_node.parent, path_hash(name));
+                        btree_print(disk, cache, pair->btree_block , 0);
                     }
                     write_block(disk, cache, block_type, 0, block);
                     inode_get_block(disk, cache, &dir_node, 0, &block);
@@ -186,7 +190,7 @@ int directory_list(DiskInterface* disk, cache *cache, const char *path, DirEntry
                 fprintf(stderr, "ERROR: Not a data type block!!\n");
                 break;
             }
-            if (0 == rv)
+            if (0 == i)
             {
                 db = (DirectoryBlock*) ( block_type + 1 );
                 *entries = malloc( db->entry_count * sizeof(struct DirEntry) );

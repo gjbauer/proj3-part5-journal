@@ -18,13 +18,11 @@ endif
 
 all: fuse
 
-fuse:
+fuse: test_image
 	clang $(CFLAGS) -o fuse $(COMMON_FILES) fuse.c $(FUSE_FLAGS)
-	dd if=/dev/zero of=my.img bs=1M count=2
 
-sanitize:
+sanitize: test_image
 	clang $(CFLAGS) -fsanitize=address -o fuse $(COMMON_FILES) fuse.c $(FUSE_FLAGS)
-	dd if=/dev/zero of=my.img bs=1M count=2
 
 format: mkfs fuse
 	./mkfs.nbtrfs my.img
@@ -37,7 +35,9 @@ unmount:
 	
 mkfs:
 	clang $(CFLAGS) -o mkfs.nbtrfs $(COMMON_FILES) mkfs.c -DCACHE_DISABLED
-	dd if=/dev/zero of=my.img bs=1M count=2
+
+test_image:
+		dd if=/dev/zero of=my.img bs=1M count=20
 
 clean:
 	rm -rf $(RM_FILES)

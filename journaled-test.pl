@@ -2,7 +2,7 @@
 use 5.16.0;
 use warnings FATAL => 'all';
 
-use Test::Simple tests => 32;
+use Test::Simple tests => 57;
 use IO::Handle;
 
 # To capture process PID
@@ -235,18 +235,22 @@ ok(-f "dir1/dir2/dir3/dir4/dir5/hello.txt", "file in nested directories exists a
 
 system("mkdir mnt/numbers");
 
+for my $ii (1..300) {
+    system("touch mnt/numbers/$ii.num", "$ii");
+}
+
 kill_mount($pid);
 unmount();
 $pid = mount();
 
 my $nn = `ls mnt/numbers | wc -l`;
-ok($nn == 50, "created 50 files");
+ok($nn == 50, "created 300 files");
 
-for my $ii (1..50) {
+for my $ii (1..300) {
     write_text("numbers/$ii.num", "$ii");
 }
 
-for my $ii (1..5) {
+for my $ii (1..30) {
     my $xx = $ii * 10;
     my $yy = read_text("numbers/$xx.num");
     ok($yy =~ /^\d+$/ && $xx == $yy, "check value $xx");

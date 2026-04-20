@@ -76,13 +76,15 @@ nbtrfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     DirEntry *entries;
     char absolute[PATH_MAX];
     memset(absolute, '\0', PATH_MAX);
-    
-    //btree_print(disk, cache_s, 10, 0);
 
     rv = nbtrfs_getattr(path, &st);
     assert(rv == 0);
 
     filler(buf, ".", &st, 0);
+    
+    Superblock superblock;
+    superblock_read(disk, cache_s, &superblock);
+    btree_print(disk, cache_s, superblock.btree_root, 0);
     
     if (l > 0)
     {
@@ -99,6 +101,7 @@ nbtrfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     {
         if (count_l(path) > 0) snprintf(absolute, PATH_MAX, "%s/%s", path, entries[i].name);
         else snprintf(absolute, PATH_MAX, "%s%s", path, entries[i].name);
+        printf("path_hash = %llu\n", path_hash(entries[i].name));
         rv = nbtrfs_getattr(absolute, &st);
         assert(rv == 0);
         filler(buf, entries[i].name, &st, 0);
@@ -128,7 +131,6 @@ nbtrfs_mknod(const char *path, mode_t mode, dev_t rdev)
     node.creation_time = time(NULL);
     rv = inode_write(disk, cache_s, &node);
     if (rv) goto print;
-    printf("Adding directory entry...");
     rv = directory_add_entry(disk, cache_s, parent, name, node.inode_number, ( mode & S_IFMT) );
 print:
     arc4random_buf(&node, sizeof(struct Inode));
