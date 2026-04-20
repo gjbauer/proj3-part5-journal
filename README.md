@@ -7,6 +7,8 @@
  - How To Use/Test
     - [Compilation](#Compilation)
     - [Testing](#Testing)
+      - [Safe Condition](#Safe-Condition-Tests)
+      - [Crash Recovery](#Journaling-Tests)
 
 
 ## High-Performance Block Cache
