@@ -236,7 +236,8 @@ ok(-f "dir1/dir2/dir3/dir4/dir5/hello.txt", "file in nested directories exists a
 system("mkdir mnt/numbers");
 
 for my $ii (1..300) {
-    system("touch mnt/numbers/$ii.num", "$ii");
+    open(my $fh, '>', "mnt/numbers/$ii.num");
+    close $fh;
 }
 
 kill_mount($pid);
