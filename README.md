@@ -71,7 +71,7 @@ macOS:
 ![](screen.png)
 
 ### Journaling Tests
-The current version of the filesystem fails all of the expected tests on the journaled test suite as the journal is note yet implemented. Similar to the previous test suite, it has only been tested on macOS, but I will go on to test on Arch Linux and FreeBSD.
+The current version of the filesystem fails all of the expected tests on the journaled test suite as the journal is not yet implemented. Similar to the previous test suite, it has only been tested on macOS, but I will go on to test on Arch Linux and FreeBSD.
 
 macOS:
 ![](screen1.png)
