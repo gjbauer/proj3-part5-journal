@@ -16,18 +16,18 @@ ifeq ($(UNAME_S), Darwin)
     RM_FILES += *.dSYM
 endif
 
-all: fuse
+all: fuse format
 
-fuse: test_image
+fuse:
 	clang $(CFLAGS) -o fuse $(COMMON_FILES) fuse.c $(FUSE_FLAGS)
 
-sanitize: test_image
+sanitize:
 	clang $(CFLAGS) -fsanitize=address -o fuse $(COMMON_FILES) fuse.c $(FUSE_FLAGS)
 
-format: mkfs fuse
+format: mkfs test_image
 	./mkfs.nbtrfs my.img
 	
-mount:
+mount: fuse
 	./fuse -s -f mnt my.img
 
 unmount:

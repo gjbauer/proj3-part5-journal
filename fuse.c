@@ -44,6 +44,7 @@ nbtrfs_getattr(const char *path, struct stat *st)
     int rv = -ENOENT;
     InodeBtreePair *pair = item_search(disk, cache_s, path);
     Inode node;
+    
     if (pair->inode_number || pair->btree_block)
     {
         inode_read(disk, cache_s, pair->inode_number, &node);
@@ -82,10 +83,6 @@ nbtrfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
     filler(buf, ".", &st, 0);
     
-    Superblock superblock;
-    superblock_read(disk, cache_s, &superblock);
-    btree_print(disk, cache_s, superblock.btree_root, 0);
-    
     if (l > 0)
     {
         char *parent = parent_path(path, l);
@@ -101,7 +98,6 @@ nbtrfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     {
         if (count_l(path) > 0) snprintf(absolute, PATH_MAX, "%s/%s", path, entries[i].name);
         else snprintf(absolute, PATH_MAX, "%s%s", path, entries[i].name);
-        printf("path_hash = %llu\n", path_hash(entries[i].name));
         rv = nbtrfs_getattr(absolute, &st);
         assert(rv == 0);
         filler(buf, entries[i].name, &st, 0);

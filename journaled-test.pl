@@ -9,7 +9,7 @@ ok(!-e "fuse", "no binaries");
 
 system("(make clean 2>&1) > /dev/null");
 
-system("(make format 2>&1) > /dev/null");
+system("(make fuse format 2>&1) > /dev/null");
 
 system("(mkdir mnt 2>&1) > /dev/null");
 
@@ -35,7 +35,7 @@ sub mount {
     }
 
     # PARENT PROCESS
-    sleep 1;
+    sleep 3;
     
     return $pid;
 }
@@ -254,8 +254,8 @@ for my $ii (1..30) {
     ok($yy =~ /^\d+$/ && $xx == $yy, "check value $xx");
 }
 
-for my $ii (1..4) {
-    my $xx = $ii * 7;
+for my $ii (1..150) {
+    my $xx = $ii * 2;
     system("rm mnt/numbers/$xx.num");
 }
 
@@ -270,7 +270,7 @@ unmount();
 mount();
 
 my $mm = `ls mnt/numbers | wc -l`;
-ok($mm == 46, "deleted 4 files");
+ok($mm == 150, "deleted 150 files");
 
 unmount();
 

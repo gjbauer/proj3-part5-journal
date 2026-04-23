@@ -4,24 +4,19 @@ mkdir mnt/numbers
 
 for n in {1..300}; 
 do
-    echo "$n" > "mnt/numbers/"$n".nums"
+    echo "$n" > "mnt/numbers/"$n".num"
 done
 
-for n in {1..30}; 
+for n in {1..30};
 do
     cat "mnt/numbers/"$((n*10))".nums"
 done
 
-for n in {1..4};
-do
-	cat "mnt/numbers/"$((n*7))".nums"
-done
+ls mnt/numbers | wc -l 
 
-ls mnt/numbers | wc -l
-
-for n in {1..4};
+for n in {1..150};
 do
-	rm "mnt/numbers/"$((n*7))".nums"
+	rm "mnt/"$((n*2))".num"
 done
 
 ls mnt/numbers | wc -l

@@ -106,6 +106,14 @@ uint64_t btree_delete(DiskInterface* disk, cache *cache, uint64_t root_block, ui
 void btree_split_root(DiskInterface* disk, cache *cache, BTreeNode* root);
 
 /**
+ * Promote the root node when it's children underflow'
+ * Updates root and grandchildren, deletes children
+ * @param disk Pointer to DiskInterface
+ * @param root Pointer to root node to update
+ */
+void btree_promote_root(DiskInterface* disk, cache *cache, BTreeNode* root);
+
+/**
  * Split a full child node
  * @param disk Pointer to DiskInterface
  * @param node Pointer to parent node

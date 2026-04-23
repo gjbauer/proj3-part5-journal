@@ -15,12 +15,12 @@ system("(mkdir mnt 2>&1) > /dev/null");
 
 sub mount {
     system("(make mount 2>&1) >> test.log &");
-    sleep 1;
+    sleep 3;
 }
 
 sub unmount {
     system("(sudo umount mnt 2>&1) >> test.log");
-    sleep 1;
+    sleep 3;
 }
 
 sub write_text {
@@ -182,8 +182,8 @@ for my $ii (1..30) {
     ok($yy =~ /^\d+$/ && $xx == $yy, "check value $xx");
 }
 
-for my $ii (1..4) {
-    my $xx = $ii * 7;
+for my $ii (1..150) {
+    my $xx = $ii * 2;
     system("rm mnt/numbers/$xx.num");
 }
 
@@ -194,7 +194,7 @@ ok(!-d "mnt/numbers", "numbers dir doesn't exist after umount");
 mount();
 
 my $mm = `ls mnt/numbers | wc -l`;
-ok($mm == 296, "deleted 4 files");
+ok($mm == 150, "deleted 150 files");
 
 unmount();
 

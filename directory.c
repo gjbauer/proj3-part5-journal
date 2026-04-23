@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 int directory_add_entry(DiskInterface* disk, cache *cache, const char *path, const char* name, uint64_t target_inode, FileType type)
 {
@@ -29,6 +30,7 @@ int directory_add_entry(DiskInterface* disk, cache *cache, const char *path, con
         inode_read(disk, cache, pair->inode_number, &node);
         for (uint16_t i=0; i < ( ( UINT16_MAX * sizeof(struct DirEntry) ) / USABLE_BLOCK_SIZE ); i++)
         {
+            block = 0;
             inode_get_block(disk, cache, &node, i, &block);
             if (!block)
             {
@@ -38,15 +40,22 @@ int directory_add_entry(DiskInterface* disk, cache *cache, const char *path, con
                 block_type = get_block(disk, cache, pair->inode_number, block);
                 *block_type = BLOCK_TYPE_DATA;
                 inode_write(disk, cache, &node);
-                db = (DirectoryBlock*) ( block_type + 1 );
+                if (0 == i)
+                {
+                    db = (DirectoryBlock*) ( block_type + 1 );
+                    db->entry_count = 0;
+                }
+                write_block(disk, cache, block_type, 0, block);
             }
             else block_type = get_block(disk, cache, pair->inode_number, block);
+            
             if (BLOCK_TYPE_DATA != *block_type)
             {
                 fprintf(stderr, "ERROR: Not a data type block!!\n");
                 rv = -1;
                 goto free_pair;
             }
+            
             if (0 == i)
             {
                 db = (DirectoryBlock*) ( block_type + 1 );
@@ -54,14 +63,22 @@ int directory_add_entry(DiskInterface* disk, cache *cache, const char *path, con
                 number_of_entries = db->entry_count;
             }
             else entry = (DirEntry*) ( block_type + 1 );
-            uint16_t entries_per_block = (USABLE_BLOCK_SIZE-sizeof(struct DirectoryBlock)) / sizeof(struct DirEntry);
+            
+            uint16_t entries_per_block;
+            if (0 == i) {
+                // First block has DirectoryBlock header
+                entries_per_block = (USABLE_BLOCK_SIZE-sizeof(struct DirectoryBlock)) / sizeof(struct DirEntry);
+            } else {
+                // Subsequent blocks are just entries
+                entries_per_block = USABLE_BLOCK_SIZE / sizeof(struct DirEntry);
+            }
             for (uint16_t j=0; j < entries_per_block ; j++)
             {
-                if (!entry[j].active || count == db->entry_count)
+                if (!entry[j].active || count == number_of_entries)
                 {
                     number_of_entries++;
                     printf("Adding entry: name='%s', inode=%llu, type=%d, count before=%d, count after=%d\n",
-                           name, target_inode, type, db->entry_count - 1, db->entry_count);
+                           name, target_inode, type, number_of_entries - 1, number_of_entries);
                     if (FILE_TYPE_DIRECTORY == type)
                     {
                         uint64_t dir_root_page;
@@ -72,10 +89,21 @@ int directory_add_entry(DiskInterface* disk, cache *cache, const char *path, con
                         btree_node_write(disk, cache, dir_root);
                         
                         // Insert this root node into the parent's B-tree
-                        btree_insert(disk, cache, pair->btree_block, path_hash(name), dir_root_page, type);
+                        if (btree_insert(disk, cache, pair->btree_block, path_hash(name), dir_root_page, type) != 0) {
+                            // B-tree insertion failed, clean up
+                            btree_node_free(disk, cache, dir_root_page);
+                            rv = -1;
+                            goto free_pair;
+                        }
                         new_file.btree_block = dir_root_page;
                     }
-                    else btree_insert(disk, cache, pair->btree_block, path_hash(name), target_inode, type);
+                    else {
+                        if (btree_insert(disk, cache, pair->btree_block, path_hash(name), target_inode, type) != 0) {
+                            // B-tree insertion failed
+                            rv = -1;
+                            goto free_pair;
+                        }
+                    }
                     memcpy( &entry[j], &new_file, sizeof(struct DirEntry) );
                     write_block(disk, cache, block_type, 0, block);
                     inode_get_block(disk, cache, &node, 0, &block);
@@ -97,7 +125,7 @@ free_pair:
 
 int directory_remove_entry(DiskInterface* disk, cache *cache, const char *path, const char* name)
 {
-    int rv = -1;
+    int rv = -ENOENT;
     InodeBtreePair *pair = item_search(disk, cache, path);
     Inode dir_node = {0}, file_node = {0};
     uint64_t block;
@@ -113,6 +141,7 @@ int directory_remove_entry(DiskInterface* disk, cache *cache, const char *path, 
         inode_read(disk, cache, pair->inode_number, &dir_node);
         for (uint16_t i=0; i < ( ( UINT16_MAX * sizeof(struct DirEntry) ) / USABLE_BLOCK_SIZE ); i++)
         {
+            block = 0;
             inode_get_block(disk, cache, &dir_node, i, &block);
             if (!block)
                 goto free_pair;
@@ -130,7 +159,7 @@ int directory_remove_entry(DiskInterface* disk, cache *cache, const char *path, 
             }
             else entry = (DirEntry*) ( block_type + 1 );
             if (number_of_entries == count) break;
-            uint16_t entries_per_block = USABLE_BLOCK_SIZE / sizeof(struct DirEntry);
+            uint16_t entries_per_block = (USABLE_BLOCK_SIZE - sizeof(struct DirectoryBlock)) / sizeof(struct DirEntry);
             for (uint16_t j=0; j < entries_per_block ; j++)
             {
                 if (!strcmp(entry->name, name))
@@ -145,7 +174,7 @@ int directory_remove_entry(DiskInterface* disk, cache *cache, const char *path, 
                         BTreeNode tree_node;
                         uint64_t tree_node_block = btree_search(disk, cache, pair->btree_block, path_hash(name));
                         btree_node_read(disk, cache, tree_node_block, &tree_node);
-                        btree_delete(disk, cache, tree_node.parent, path_hash(name));
+                        btree_delete(disk, cache, pair->btree_block, path_hash(name));
                         btree_print(disk, cache, pair->btree_block , 0);
                     }
                     write_block(disk, cache, block_type, 0, block);
@@ -158,7 +187,7 @@ int directory_remove_entry(DiskInterface* disk, cache *cache, const char *path, 
                     break;
                 }
                 entry++;
-                count++;
+                if (entry->active) count++;
             }
         }
     }
