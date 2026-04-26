@@ -20,6 +20,7 @@
 #include "directory.h"
 
 #include "journal.h"
+#include "metadata-api.h"
 
 DiskInterface* disk;
 cache *cache_s;
@@ -119,25 +120,7 @@ nbtrfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 int
 nbtrfs_mknod(const char *path, mode_t mode, dev_t rdev)
 {
-    Inode node;
-    char *parent = parent_path(path, count_l(path));
-    char *name = get_name(path);
-    int rv = inode_allocate(disk, cache_s, mode);
-    if (-1 == rv) goto print;
-    rv = inode_read(disk, cache_s, rv, &node);
-    if (rv) goto print;
-    node.creation_time = time(NULL);
-    rv = inode_write(disk, cache_s, &node);
-    if (rv) goto print;
-    rv = directory_add_entry(disk, cache_s, parent, name, node.inode_number, ( mode & S_IFMT) );
-print:
-    arc4random_buf(&node, sizeof(struct Inode));
-    arc4random_buf(parent, sizeof(char)*strlen(parent));
-    arc4random_buf(name, sizeof(char)*strlen(name));
-    free(parent);
-    free(name);
-    printf("mknod(%s, %04o) -> %d\n", path, mode, rv);
-    return rv;
+    return _mknod(disk, cache_s, path, mode, false);
 }
 
 int
@@ -161,41 +144,13 @@ nbtrfs_mkdir(const char *path, mode_t mode)
 int
 nbtrfs_unlink(const char *path)
 {
-    char *parent = parent_path(path, count_l(path));
-    char *name = get_name(path);
-    int rv = directory_remove_entry(disk, cache_s, parent, name);
-    arc4random_buf(parent, sizeof(char)*strlen(parent));
-    arc4random_buf(name, sizeof(char)*strlen(name));
-    free(parent);
-    free(name);
-    printf("unlink(%s) -> %d\n", path, rv);
-    return rv;
+    return _unlink(disk, cache_s, path, false);
 }
 
 int
 nbtrfs_link(const char *from, const char *to)
 {
-    int rv = -1;
-    InodeBtreePair *from_pair = item_search(disk, cache_s, from);
-    Inode from_inode;
-    inode_read(disk, cache_s, from_pair->inode_number, &from_inode);
-    char *to_parent = parent_path(to, count_l(to));
-    char *to_name = get_name(to);
-    rv = directory_add_entry(disk, cache_s, to_parent, to_name, from_pair->inode_number, (FileType) ( from_inode.mode & S_IFMT));
-    if (!rv)
-    {
-        from_inode.reference_count++;
-        inode_write(disk, cache_s, &from_inode);
-    }
-    
-    arc4random_buf(from_pair, sizeof(struct InodeBtreePair));
-    arc4random_buf(to_parent, sizeof(char)*strlen(to_parent));
-    arc4random_buf(to_name, sizeof(char)*strlen(to_name));
-    free(from_pair);
-    free(to_parent);
-    free(to_name);
-    printf("link(%s => %s) -> %d\n", from, to, rv);
-	return rv;
+	return _link(disk, cache_s, from, to, false);
 }
 
 int
@@ -222,27 +177,13 @@ nbtrfs_rename(const char *from, const char *to)
 int
 nbtrfs_chmod(const char *path, mode_t mode)
 {
-    int rv = -1;
-    InodeBtreePair *pair = item_search(disk, cache_s, path);
-    Inode node;
-    rv = inode_read(disk, cache_s, pair->inode_number, &node);
-    if (rv) return rv;
-    node.mode = mode;
-    rv = inode_write(disk, cache_s, &node);
-    arc4random_buf(pair, sizeof(struct InodeBtreePair));
-    arc4random_buf(&node, sizeof(struct Inode));
-    free(pair);
-    printf("chmod(%s, %04o) -> %d\n", path, mode, rv);
-    return rv;
+    return _chmod(disk, cache_s, path, mode, false);
 }
 
 int
 nbtrfs_truncate(const char *path, off_t size)
 {
-    int rv = 0;
-    // TODO: Implement truncate
-    printf("truncate(%s, %lld bytes) -> %d\n", path, size, rv);
-    return rv;
+    return _truncate(disk, cache_s, path, size, false);
 }
 
 // this is called on open, but doesn't need to do much

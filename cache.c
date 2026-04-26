@@ -111,6 +111,40 @@ write_block(DiskInterface* disk, cache *cache, void *buf, int64_t inum, uint64_t
 	#endif
 }
 
+void increase_pin_count(DiskInterface* disk, cache *cache, uint64_t pnum)
+{
+#ifndef CACHE_DISABLED
+    int index = pci_lookup(cache->pci, pnum);
+    if (index==-1)
+    {
+        // Block not in cache - load it first
+        // We use 0 as pin counts are only tracked
+        // for metadata blocks
+        get_block(disk, cache, 0, pnum);
+        index = pci_lookup(cache->pci, pnum);
+    }
+    
+    cache->cache[index].pin_count++;
+#endif
+}
+
+void decrease_pin_count(DiskInterface* disk, cache *cache, uint64_t pnum)
+{
+#ifndef CACHE_DISABLED
+    int index = pci_lookup(cache->pci, pnum);
+    if (index==-1)
+    {
+        // Block not in cache - load it first
+        // We use 0 as pin counts are only tracked
+        // for metadata blocks
+        get_block(disk, cache, 0, pnum);
+        index = pci_lookup(cache->pci, pnum);
+    }
+    
+    cache->cache[index].pin_count++;
+#endif
+}
+
 void cache_fsync(DiskInterface* disk, cache *cache, uint64_t inum)
 {
 	#ifndef CACHE_DISABLED

@@ -31,6 +31,18 @@ void
 write_block(DiskInterface* disk, cache *cache, void *buf, int64_t inum, uint64_t pnum);
 
 /**
+ * Increases pin count on a block by 1
+ */
+void
+increase_pin_count(DiskInterface* disk, cache *cache, uint64_t pnum);
+
+/**
+ * Decreases pin count on a block by 1
+ */
+void
+decrease_pin_count(DiskInterface* disk, cache *cache, uint64_t pnum);
+
+/**
  * Sync all dirty blocks for a specific inode to disk
  */
 void cache_fsync(DiskInterface* disk, cache *cache, uint64_t inum);
