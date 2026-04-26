@@ -19,6 +19,8 @@
 #include "string.h"
 #include "directory.h"
 
+#include "journal.h"
+
 DiskInterface* disk;
 cache *cache_s;
 
