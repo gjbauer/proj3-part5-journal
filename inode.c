@@ -33,7 +33,7 @@ clear_stack:
     return rv;
 }
 
-int inode_write(DiskInterface* disk, cache *cache, const Inode* inode)
+int inode_write(DiskInterface* disk, cache *cache, const Inode* inode, bool write_through)
 {
     int rv = -1;
     Superblock sb;
@@ -50,7 +50,16 @@ int inode_write(DiskInterface* disk, cache *cache, const Inode* inode)
     Inode *node = (Inode*) ( block_type + 1);
     node = node + ( inode->inode_number % inode_per_page );
     memcpy(node, inode, sizeof(struct Inode));
-    write_block(disk, cache, block_type, 0, sb.inode_bitmap + calculate_inode_bitmap_size(&sb) + inode_page);
+    if (write_through)
+    {
+        disk_write_block(disk, sb.inode_bitmap + calculate_inode_bitmap_size(&sb) + inode_page, block_type);
+        decrease_pin_count(disk, cache, 0, sb.inode_bitmap + calculate_inode_bitmap_size(&sb) + inode_page);
+    }
+    else
+    {
+        write_block(disk, cache, block_type, 0, sb.inode_bitmap + calculate_inode_bitmap_size(&sb) + inode_page);
+        increase_pin_count(disk, cache, 0, sb.inode_bitmap + calculate_inode_bitmap_size(&sb) + inode_page);
+    }
     rv = 0;
     printf("inode_write: inode=%llu, mode=%o\n", inode->inode_number, inode->mode);
 clear_stack:
@@ -58,7 +67,7 @@ clear_stack:
     return rv;
 }
 
-int64_t inode_allocate(DiskInterface* disk, cache *cache, mode_t mode)
+int64_t inode_allocate(DiskInterface* disk, cache *cache, mode_t mode, bool write_through)
 {
     Superblock sb;
     Inode node;
@@ -92,12 +101,21 @@ int64_t inode_allocate(DiskInterface* disk, cache *cache, mode_t mode)
             node.owner_id = getuid();
             node.group_id = getgid();
             node.reference_count = 1;
-            if (inode_write(disk, cache, &node))
+            if (inode_write(disk, cache, &node, write_through))
             {
                 fprintf(stderr, "ERROR: Could not write inode!!\n");
                 goto wipe_inode;
             }
-			write_block(disk, cache, ibm, 0, ibmn );
+            if (write_through)
+            {
+                disk_write_block(disk, ibmn, ibm);
+                decrease_pin_count(disk, cache, 0, ibmn);
+            }
+            else
+            {
+                write_block(disk, cache, ibm, 0, ibmn);
+                increase_pin_count(disk, cache, 0, ibmn);
+            }
 			printf("+ inode_allocate() -> %llu\n", ii);
 			rv = ii;
             goto wipe_inode;
@@ -112,7 +130,7 @@ wipe_superblock:
 	return rv;  // No free blocks available
 }
 
-int inode_free(DiskInterface* disk, cache *cache, uint64_t inode_number)
+int inode_free(DiskInterface* disk, cache *cache, uint64_t inode_number, bool write_through)
 {
     int rv = -1;
     Superblock sb;
@@ -136,9 +154,27 @@ int inode_free(DiskInterface* disk, cache *cache, uint64_t inode_number)
     Inode *node = ( (Inode*)( block_type + 1) + ( inode_number % inode_per_page ) );
     // Use memset(0) because we want our inodes to contain 0 data upon initialization
     memset(node, 0, sizeof(struct Inode) );
-    write_block(disk, cache, block_type, 0,  ( sb.inode_bitmap + calculate_inode_bitmap_size(&sb) + inode_page ) );
+    if (write_through)
+    {
+        disk_write_block(disk, ( sb.inode_bitmap + calculate_inode_bitmap_size(&sb) + inode_page ), block_type);
+        decrease_pin_count(disk, cache, 0, ( sb.inode_bitmap + calculate_inode_bitmap_size(&sb) + inode_page ));
+    }
+    else
+    {
+        write_block(disk, cache, block_type, 0,  ( sb.inode_bitmap + calculate_inode_bitmap_size(&sb) + inode_page ) );
+        increase_pin_count(disk, cache, 0, ( sb.inode_bitmap + calculate_inode_bitmap_size(&sb) + inode_page ));
+    }
     printf("+ inode_free(%llu)\n", inode_number);
-	write_block(disk, cache, ibm, 0, ibmn );
+    if (write_through)
+    {
+        disk_write_block(disk, ibmn, ibm);
+        decrease_pin_count(disk, cache, 0, ibmn);
+    }
+    else
+    {
+        write_block(disk, cache, ibm, 0, ibmn);
+        increase_pin_count(disk, cache, 0, ibmn);
+    }
     arc4random_buf(&sb, sizeof(struct Superblock));
     rv = 0;
 return_rv:
@@ -189,7 +225,7 @@ int inode_set_block(DiskInterface* disk, cache *cache, Inode* inode, uint64_t bl
             if (!inode->indirect_block) return rv;
             block_type_t *block_type = get_block(disk, cache, inode->inode_number, inode->indirect_block);
             *block_type = BLOCK_TYPE_DATA;
-            inode_write(disk, cache, &(*inode));
+            inode_write(disk, cache, &(*inode), false);
             inode_read(disk, cache, inode->inode_number, &(*inode));
             uint64_t *sind = (uint64_t*)( block_type + 1 );
             memset(sind, 0, USABLE_BLOCK_SIZE);

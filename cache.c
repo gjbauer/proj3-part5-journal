@@ -26,8 +26,10 @@ get_block(DiskInterface* disk, cache *cache, uint64_t inum, uint64_t pnum)
 		
 		// If no free cache slots, evict LRU entry
 		if (cache->free_list==NULL) {
-			// Get least recently used cache entry
-			int cache_index = lru_pop(cache, &cache->lru->prev);
+			// Get least recently used non-pinned cache entry
+            LRU_List *curr = cache->lru->prev;
+            while (cache->cache[curr->index].pin_count) curr = curr->prev;
+			int cache_index = lru_pop(cache, &curr);
 			
 			// If evicted entry is dirty, write it back to disk
 			if (cache->cache[cache_index].dirty_bit)
@@ -111,16 +113,14 @@ write_block(DiskInterface* disk, cache *cache, void *buf, int64_t inum, uint64_t
 	#endif
 }
 
-void increase_pin_count(DiskInterface* disk, cache *cache, uint64_t pnum)
+void increase_pin_count(DiskInterface* disk, cache *cache, uint64_t inum, uint64_t pnum)
 {
 #ifndef CACHE_DISABLED
     int index = pci_lookup(cache->pci, pnum);
     if (index==-1)
     {
         // Block not in cache - load it first
-        // We use 0 as pin counts are only tracked
-        // for metadata blocks
-        get_block(disk, cache, 0, pnum);
+        get_block(disk, cache, inum, pnum);
         index = pci_lookup(cache->pci, pnum);
     }
     
@@ -128,20 +128,18 @@ void increase_pin_count(DiskInterface* disk, cache *cache, uint64_t pnum)
 #endif
 }
 
-void decrease_pin_count(DiskInterface* disk, cache *cache, uint64_t pnum)
+void decrease_pin_count(DiskInterface* disk, cache *cache, uint64_t inum, uint64_t pnum)
 {
 #ifndef CACHE_DISABLED
     int index = pci_lookup(cache->pci, pnum);
     if (index==-1)
     {
         // Block not in cache - load it first
-        // We use 0 as pin counts are only tracked
-        // for metadata blocks
-        get_block(disk, cache, 0, pnum);
+        get_block(disk, cache, inum, pnum);
         index = pci_lookup(cache->pci, pnum);
     }
     
-    cache->cache[index].pin_count++;
+    if (cache->cache[index].pin_count > 0) cache->cache[index].pin_count--;
 #endif
 }
 

@@ -8,7 +8,7 @@
 #include <string.h>
 #include <errno.h>
 
-int directory_add_entry(DiskInterface* disk, cache *cache, const char *path, const char* name, uint64_t target_inode, FileType type)
+int directory_add_entry(DiskInterface* disk, cache *cache, const char *path, const char* name, uint64_t target_inode, FileType type, bool write_through)
 {
     int rv = -1;
     InodeBtreePair *pair = item_search(disk, cache, path);
@@ -39,7 +39,7 @@ int directory_add_entry(DiskInterface* disk, cache *cache, const char *path, con
                 inode_set_block(disk, cache, &node, i, block);
                 block_type = get_block(disk, cache, pair->inode_number, block);
                 *block_type = BLOCK_TYPE_DATA;
-                inode_write(disk, cache, &node);
+                inode_write(disk, cache, &node, write_through);
                 if (0 == i)
                 {
                     db = (DirectoryBlock*) ( block_type + 1 );
@@ -105,11 +105,30 @@ int directory_add_entry(DiskInterface* disk, cache *cache, const char *path, con
                         }
                     }
                     memcpy( &entry[j], &new_file, sizeof(struct DirEntry) );
-                    write_block(disk, cache, block_type, 0, block);
+                    if (write_through)
+                    {
+                        disk_write_block(disk, block, block_type);
+                        decrease_pin_count(disk, cache, target_inode, block);
+                    }
+                    else
+                    {
+                        write_block(disk, cache, block_type, 0, block);
+                        increase_pin_count(disk, cache, target_inode, block);
+                    }
                     inode_get_block(disk, cache, &node, 0, &block);
                     block_type = get_block(disk, cache, pair->inode_number, block);
                     db = (DirectoryBlock*) ( block_type + 1 );
                     db->entry_count = number_of_entries;
+                    if (write_through)
+                    {
+                        disk_write_block(disk, block, block_type);
+                        decrease_pin_count(disk, cache, target_inode, block);
+                    }
+                    else
+                    {
+                        write_block(disk, cache, block_type, 0, block);
+                        increase_pin_count(disk, cache, target_inode, block);
+                    }
                     write_block(disk, cache, block_type, 0, block);
                     rv = 0;
                     goto free_pair;
@@ -123,7 +142,7 @@ free_pair:
     return rv;
 }
 
-int directory_remove_entry(DiskInterface* disk, cache *cache, const char *path, const char* name)
+int directory_remove_entry(DiskInterface* disk, cache *cache, const char *path, const char* name, bool write_through)
 {
     int rv = -ENOENT;
     InodeBtreePair *pair = item_search(disk, cache, path);
@@ -169,7 +188,7 @@ int directory_remove_entry(DiskInterface* disk, cache *cache, const char *path, 
                     inode_read(disk, cache, entry->inode_number, &file_node);
                     if (1 == file_node.reference_count)
                     {
-                        if (inode_free(disk, cache, entry->inode_number))
+                        if (inode_free(disk, cache, entry->inode_number, write_through))
                             goto free_pair;
                         BTreeNode tree_node;
                         uint64_t tree_node_block = btree_search(disk, cache, pair->btree_block, path_hash(name));
@@ -177,12 +196,30 @@ int directory_remove_entry(DiskInterface* disk, cache *cache, const char *path, 
                         btree_delete(disk, cache, pair->btree_block, path_hash(name));
                         btree_print(disk, cache, pair->btree_block , 0);
                     }
-                    write_block(disk, cache, block_type, 0, block);
+                    if (write_through)
+                    {
+                        disk_write_block(disk, block, block_type);
+                        decrease_pin_count(disk, cache, pair->inode_number, block);
+                    }
+                    else
+                    {
+                        write_block(disk, cache, block_type, 0, block);
+                        increase_pin_count(disk, cache, pair->inode_number, block);
+                    }
                     inode_get_block(disk, cache, &dir_node, 0, &block);
                     block_type = get_block(disk, cache, pair->inode_number, block);
                     db = (DirectoryBlock*) ( block_type + 1 );
                     db->entry_count = number_of_entries;
-                    write_block(disk, cache, block_type, 0, block);
+                    if (write_through)
+                    {
+                        disk_write_block(disk, block, block_type);
+                        decrease_pin_count(disk, cache, pair->inode_number, block);
+                    }
+                    else
+                    {
+                        write_block(disk, cache, block_type, pair->inode_number, block);
+                        increase_pin_count(disk, cache, pair->inode_number, block);
+                    }
                     rv = 0;
                     break;
                 }

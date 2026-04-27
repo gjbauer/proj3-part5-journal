@@ -322,7 +322,7 @@ nbtrfs_write(const char *path, const char *buf, size_t size, off_t offset, struc
             memset(block_type + 1, 0, BLOCK_SIZE - sizeof(block_type_t));
             //write_block(disk, cache_s, block_type, node.inode_number, pnum);
             inode_set_block(disk, cache_s, &node, page_index, pnum);
-            inode_write(disk, cache_s, &node);
+            inode_write(disk, cache_s, &node, false);
         }
         
         // Get pointer to the page data
@@ -351,7 +351,7 @@ nbtrfs_write(const char *path, const char *buf, size_t size, off_t offset, struc
     // Update file size if we wrote beyond the previous end
     if (offset + bytes_written > node.size) {
         node.size = offset + bytes_written;
-        inode_write(disk, cache_s, &node);
+        inode_write(disk, cache_s, &node, false);
     }
 
 exit:
@@ -373,7 +373,7 @@ nbtrfs_utimens(const char* path, const struct timespec ts[2])
     if (rv) return rv;
     node.access_time = ts[0].tv_sec * 1000000000ULL + ts[0].tv_nsec;
     node.modification_time = ts[1].tv_sec * 1000000000ULL + ts[1].tv_nsec;
-    rv = inode_write(disk, cache_s, &node);
+    rv = inode_write(disk, cache_s, &node, false);
     arc4random_buf(pair, sizeof(struct InodeBtreePair));
     arc4random_buf(&node, sizeof(struct Inode));
     free(pair);

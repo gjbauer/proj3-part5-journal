@@ -26,9 +26,9 @@ typedef struct Inode {
 
 // Inode operations
 int inode_read(DiskInterface* disk, cache *cache, uint64_t inode_number, Inode* inode);
-int inode_write(DiskInterface* disk, cache *cache, const Inode* inode);
-int64_t inode_allocate(DiskInterface* disk, cache *cache, mode_t mode);
-int inode_free(DiskInterface* disk, cache *cache, uint64_t inode_number);
+int inode_write(DiskInterface* disk, cache *cache, const Inode* inode, bool write_through);
+int64_t inode_allocate(DiskInterface* disk, cache *cache, mode_t mode, bool write_through);
+int inode_free(DiskInterface* disk, cache *cache, uint64_t inode_number, bool write_through);
 int inode_get_block(DiskInterface* disk, cache *cache, Inode* inode, uint64_t block_index, uint64_t* physical_block);
 int inode_set_block(DiskInterface* disk, cache *cache, Inode* inode, uint64_t block_index, uint64_t physical_block);
 

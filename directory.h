@@ -20,10 +20,8 @@ typedef struct DirectoryBlock {
 } DirectoryBlock;
 
 // Directory operations
-int directory_create(DiskInterface* disk, uint64_t parent_inode, const char* name, uint64_t* new_inode);
-int directory_lookup(DiskInterface* disk, uint64_t dir_inode, const char* name, uint64_t* found_inode);
-int directory_add_entry(DiskInterface* disk, cache *cache, const char *path, const char* name, uint64_t target_inode, FileType type);
-int directory_remove_entry(DiskInterface* disk, cache *cache, const char *path, const char* name);
+int directory_add_entry(DiskInterface* disk, cache *cache, const char *path, const char* name, uint64_t target_inode, FileType type, bool write_through);
+int directory_remove_entry(DiskInterface* disk, cache *cache, const char *path, const char* name, bool write_through);
 int directory_list(DiskInterface* disk, cache *cache, const char *path, DirEntry** entries);
 
 #endif

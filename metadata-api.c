@@ -5,14 +5,14 @@ int _mknod(DiskInterface *disk, cache *cache, const char *path, mode_t mode, boo
     Inode node;
     char *parent = parent_path(path, count_l(path));
     char *name = get_name(path);
-    int rv = inode_allocate(disk, cache, mode);
+    int rv = inode_allocate(disk, cache, mode, write_through);
     if (-1 == rv) goto print;
     rv = inode_read(disk, cache, rv, &node);
     if (rv) goto print;
     node.creation_time = time(NULL);
-    rv = inode_write(disk, cache, &node);
+    rv = inode_write(disk, cache, &node, write_through);
     if (rv) goto print;
-    rv = directory_add_entry(disk, cache, parent, name, node.inode_number, ( mode & S_IFMT) );
+    rv = directory_add_entry(disk, cache, parent, name, node.inode_number, ( mode & S_IFMT), write_through);
 print:
     arc4random_buf(&node, sizeof(struct Inode));
     arc4random_buf(parent, sizeof(char)*strlen(parent));
@@ -27,7 +27,7 @@ int _unlink(DiskInterface *disk, cache *cache, const char *path, bool write_thro
 {
     char *parent = parent_path(path, count_l(path));
     char *name = get_name(path);
-    int rv = directory_remove_entry(disk, cache, parent, name);
+    int rv = directory_remove_entry(disk, cache, parent, name, write_through);
     arc4random_buf(parent, sizeof(char)*strlen(parent));
     arc4random_buf(name, sizeof(char)*strlen(name));
     free(parent);
@@ -44,11 +44,11 @@ int _link(DiskInterface *disk, cache *cache, const char *from, const char *to, b
     inode_read(disk, cache, from_pair->inode_number, &from_inode);
     char *to_parent = parent_path(to, count_l(to));
     char *to_name = get_name(to);
-    rv = directory_add_entry(disk, cache, to_parent, to_name, from_pair->inode_number, (FileType) ( from_inode.mode & S_IFMT));
+    rv = directory_add_entry(disk, cache, to_parent, to_name, from_pair->inode_number, (FileType) ( from_inode.mode & S_IFMT), write_through);
     if (!rv)
     {
         from_inode.reference_count++;
-        inode_write(disk, cache, &from_inode);
+        inode_write(disk, cache, &from_inode, write_through);
     }
     
     arc4random_buf(from_pair, sizeof(struct InodeBtreePair));
@@ -69,7 +69,7 @@ int _chmod(DiskInterface *disk, cache *cache, const char *path, mode_t mode, boo
     rv = inode_read(disk, cache, pair->inode_number, &node);
     if (rv) return rv;
     node.mode = mode;
-    rv = inode_write(disk, cache, &node);
+    rv = inode_write(disk, cache, &node, write_through);
     arc4random_buf(pair, sizeof(struct InodeBtreePair));
     arc4random_buf(&node, sizeof(struct Inode));
     free(pair);
