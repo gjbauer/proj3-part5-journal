@@ -1,3 +1,4 @@
+#include "btr.h"
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -438,6 +439,7 @@ main(int argc, char *argv[])
     //assert(argc > 2 && argc < 6);
     //printf("TODO: mount %s as data file\n", argv[--argc]);
     //storage_init(argv[--argc]);
+    setvbuf(stdout, NULL, _IONBF, 0);
     disk = disk_open(argv[--argc]);
     cache_s = alloc_cache();
     nbtrfs_init_ops(&nbtrfs_ops);

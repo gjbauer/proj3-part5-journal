@@ -65,13 +65,15 @@ This project contains two Perl tests suites. The first test suite under the name
 
 ### Safe Condition Tests
 
-The current version of the filesystem passes all of the tests on macOS. Tests will also be performed on Arch Linux and FreeBSD for consistency.
+The current version of the filesystem passes all of the tests on macOS and Arch Linux. Tests will also be performed on FreeBSD for consistency.
 
 macOS:
 ![](screen.png)
+Arch Linux:
+![](screen-arch.png)
 
 ### Journaling Tests
-The current version of the filesystem fails all of the expected tests on the journaled test suite as the journal is not yet implemented. Similar to the previous test suite, it has only been tested on macOS, but I will go on to test on Arch Linux and FreeBSD.
+The current version of the filesystem fails all of the expected tests on the journaled test suite as the journal is not yet implemented. Similar to the previous test suite, it has only been tested on macOS, but I will go on to test on Arch Linux and FreeBSD after the journal has been finished being implemented.
 
 macOS:
 ![](screen1.png)
