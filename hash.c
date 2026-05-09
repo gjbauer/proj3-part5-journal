@@ -52,7 +52,7 @@ InodeBtreePair * item_search(DiskInterface* disk, cache *cache, const char *path
     }
     
     char *token;
-    volatile uint64_t node_block;
+    uint64_t node_block;
     
     for (int i=1; i <= count_l(path); i++) {
         token = split(path, i);
@@ -61,12 +61,8 @@ InodeBtreePair * item_search(DiskInterface* disk, cache *cache, const char *path
         node_block = btree_search(disk, cache, node.block_number, path_hash(token));
         if (node_block)
         {
-            if (curr_path[0] == '\0') {
-                snprintf(curr_path, sizeof(curr_path), "/%s", token);
-            } else {
-                size_t len = strlen(curr_path);
-                snprintf(curr_path + len, sizeof(curr_path) - len, "/%s", token);
-            }
+            size_t len = strlen(curr_path);
+            snprintf(curr_path + len, sizeof(curr_path) - len, "/%s", token);
             btree_node_read(disk, cache, node_block, &node);
             // If not a directory, this will not be a valid B-Tree node, and its contents will not copy...
             if (FILE_TYPE_DIRECTORY == node.type)
@@ -86,11 +82,11 @@ InodeBtreePair * item_search(DiskInterface* disk, cache *cache, const char *path
     fprintf(stderr, "ERROR: Path not found!!\n");
     goto return_pair;
 wipe_token:
-    //arc4random_buf(token, sizeof(token));
+    arc4random_buf(token, sizeof(token));
 return_pair:
-    //arc4random_buf(&sb, sizeof(struct Superblock));
-    //arc4random_buf(&node, sizeof(struct BTreeNode));
-    //arc4random_buf(&curr_path, sizeof(curr_path));
+    arc4random_buf(&sb, sizeof(struct Superblock));
+    arc4random_buf(&node, sizeof(struct BTreeNode));
+    arc4random_buf(&curr_path, sizeof(curr_path));
     return pair;
 }
 
