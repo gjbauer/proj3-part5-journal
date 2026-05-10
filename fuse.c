@@ -120,6 +120,12 @@ nbtrfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 int
 nbtrfs_mknod(const char *path, mode_t mode, dev_t rdev)
 {
+    journal_entry_t entry;
+    entry.type = MKNOD;
+    entry.synced = false;
+    strcpy(entry.mknod.path, path);
+    entry.mknod.mode = mode;
+    initialize_journal_entry(disk, cache_s, &entry);
     return _mknod(disk, cache_s, path, mode, false);
 }
 
@@ -144,12 +150,23 @@ nbtrfs_mkdir(const char *path, mode_t mode)
 int
 nbtrfs_unlink(const char *path)
 {
+    journal_entry_t entry;
+    entry.type = UNLINK;
+    entry.synced = false;
+    strcpy(entry.unlink.path, path);
+    initialize_journal_entry(disk, cache_s, &entry);
     return _unlink(disk, cache_s, path, false);
 }
 
 int
 nbtrfs_link(const char *from, const char *to)
 {
+    journal_entry_t entry;
+    entry.type = LINK;
+    entry.synced = false;
+    strcpy(entry.link.from, from);
+    strcpy(entry.link.to, to);
+    initialize_journal_entry(disk, cache_s, &entry);
 	return _link(disk, cache_s, from, to, false);
 }
 
@@ -177,12 +194,24 @@ nbtrfs_rename(const char *from, const char *to)
 int
 nbtrfs_chmod(const char *path, mode_t mode)
 {
+    journal_entry_t entry;
+    entry.type = CHMOD;
+    entry.synced = false;
+    strcpy(entry.chmod.path, path);
+    entry.chmod.mode = mode;
+    initialize_journal_entry(disk, cache_s, &entry);
     return _chmod(disk, cache_s, path, mode, false);
 }
 
 int
 nbtrfs_truncate(const char *path, off_t size)
 {
+    journal_entry_t entry;
+    entry.type = TRUNCATE;
+    entry.synced = false;
+    strcpy(entry.truncate.path, path);
+    entry.truncate.size = size;
+    initialize_journal_entry(disk, cache_s, &entry);
     return _truncate(disk, cache_s, path, size, false);
 }
 
