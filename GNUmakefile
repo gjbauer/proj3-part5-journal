@@ -37,7 +37,7 @@ mkfs:
 	clang $(CFLAGS) -o mkfs.nbtrfs $(COMMON_FILES) mkfs.c -DCACHE_DISABLED
 
 test_image:
-		dd if=/dev/zero of=my.img bs=1M count=20
+	dd if=/dev/zero of=my.img bs=1M count=20
 
 clean:
 	rm -rf $(RM_FILES)

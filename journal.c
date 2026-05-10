@@ -9,6 +9,19 @@ void initialize_journal_entry(DiskInterface *disk, cache *cache, journal_entry_t
 
 void sync_entry(DiskInterface *disk, cache *cache, journal_entry_t *entry)
 {
+    switch (entry->type)
+    {
+        case MKNOD:
+            break;
+        case UNLINK:
+            break;
+        case LINK:
+            break;
+        case CHMOD:
+            break;
+        case TRUNCATE:
+            break;
+    }
 }
 
 void sync_journal(DiskInterface *disk, cache *cache);
