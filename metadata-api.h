@@ -1,3 +1,6 @@
+#ifndef METADATA_API_H
+#define METADATA_API_H
+
 #include "inode.h"
 #include "hash.h"
 #include <time.h>
@@ -21,3 +24,4 @@ int _link(DiskInterface *disk, cache *cache, const char *from, const char *to, b
 int _chmod(DiskInterface *disk, cache *cache, const char *path, mode_t mode, bool write_through);
 
 int _truncate(DiskInterface *disk, cache *cache, const char *path, off_t size, bool write_through);
+#endif

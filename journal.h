@@ -1,3 +1,5 @@
+#ifndef JOURNAL_H
+#define JOURNAL_H
 #include "disk.h"
 #include "cache.h"
 #include <stdio.h>
@@ -61,3 +63,4 @@ void sync_entry(DiskInterface *disk, cache *cache, journal_entry_t *entry);
 
 void sync_journal(DiskInterface *disk, cache *cache);
 
+#endif
