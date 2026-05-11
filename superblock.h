@@ -10,8 +10,8 @@ typedef struct Superblock {
     uint64_t total_blocks;           // Total blocks in filesystem ✔
     uint64_t free_blocks;            // Number of free blocks ✔
     uint64_t inode_bitmap;           // Location of start of inode bitmap ✔
-    uint64_t root_inode;             // Root directory inode number
-    uint64_t btree_root;             // Root of B-tree index
+    uint64_t root_inode;             // Root directory inode number ✔
+    uint64_t btree_root;             // Root of B-tree index ✔
     //uint64_t next_free_block;        // Next free block for allocation
     //uint64_t next_free_inode;        // Next available inode number
     char volume_name[32];            // Volume label ✔

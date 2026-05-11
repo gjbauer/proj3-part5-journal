@@ -197,6 +197,7 @@ int disk_format(DiskInterface* disk, cache *cache, const char* volume_name)
     uint64_t page;
     BTreeNode *root = btree_node_create(disk, cache, false, &page);
     root->value = inode_allocate(disk, cache, S_IFDIR | 0755, true);
+	superblock.root_inode = root->value;
     superblock.btree_root = page;
     
     printf("Free blocks: %llu\n", superblock.free_blocks);
