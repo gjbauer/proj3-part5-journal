@@ -83,6 +83,7 @@ InodeBtreePair * item_search(DiskInterface* disk, cache *cache, const char *path
     goto return_pair;
 wipe_token:
     arc4random_buf(token, sizeof(token));
+    free(token);
 return_pair:
     arc4random_buf(&sb, sizeof(struct Superblock));
     arc4random_buf(&node, sizeof(struct BTreeNode));
