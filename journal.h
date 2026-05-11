@@ -9,11 +9,11 @@
 
 typedef enum transaction_type_t
 {
-    MKNOD,
-    UNLINK,
-    LINK,
-    CHMOD,
-    TRUNCATE,
+    MKNOD = 0x444e4b4d,
+    UNLINK = 0x4b4e4c55,
+    LINK = 0x4b4e494c,
+    CHMOD = 0x444d4843,
+    TRUNCATE = 0x54435254,
 } transaction_type_t;
 
 typedef struct journal_entry_t

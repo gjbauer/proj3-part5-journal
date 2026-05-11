@@ -28,6 +28,7 @@ void sync_entry(DiskInterface *disk, cache *cache, journal_entry_t *entry)
             _truncate(disk, cache, entry->truncate.path, entry->truncate.size, true);
             break;
     }
+    entry->synced = true;
 }
 
 void sync_journal(DiskInterface *disk, cache *cache);
