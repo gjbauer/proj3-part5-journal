@@ -61,3 +61,10 @@ int calculate_inode_table_size(Superblock *superblock)
 {
     return (superblock->total_blocks / 4) / (USABLE_BLOCK_SIZE/sizeof(Inode));
 }
+
+// journal offset
+
+int calculate_journal_size(Superblock *superblock)
+{
+    return 2;
+}

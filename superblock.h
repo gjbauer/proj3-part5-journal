@@ -28,5 +28,8 @@ int superblock_initialize(DiskInterface* disk, cache *cache, const char* volume_
 int calculate_inode_bitmap_size(Superblock *superblock);
 int calculate_inode_table_size(Superblock *superblock);
 
+// journal offset
+int calculate_journal_size(Superblock *superblock);
+
 #endif
 

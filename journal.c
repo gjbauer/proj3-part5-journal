@@ -6,6 +6,8 @@ void set_journal_head(DiskInterface *disk, cache *cache, int head_position);
 
 void initialize_journal_entry(DiskInterface *disk, cache *cache, journal_entry_t *entry)
 {
+    Superblock sb;
+    superblock_read(disk, cache, &sb);
 }
 
 void sync_entry(DiskInterface *disk, cache *cache, journal_entry_t *entry)

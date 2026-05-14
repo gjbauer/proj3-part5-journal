@@ -20,12 +20,12 @@
 #define USABLE_BLOCK_SIZE 4092
 
 typedef enum {
-    BLOCK_TYPE_DATA,          // File data content
-    BLOCK_TYPE_BTREE_NODE,    // B+Tree index node
-    BLOCK_TYPE_BITMAP,        // Allocation bitmap
-    BLOCK_TYPE_INODE,         // Inode table block
-    BLOCK_TYPE_SUPER,         // Superblock
-    BLOCK_TYPE_JOURNAL,       // Journal
+    BLOCK_TYPE_DATA = 0x41544144,          // File data content
+    BLOCK_TYPE_BTREE_NODE = 0x444e5442,    // B+Tree index node
+    BLOCK_TYPE_BITMAP = 0x504d5442,        // Allocation bitmap
+    BLOCK_TYPE_INODE = 0x444f4e49,         // Inode table block
+    BLOCK_TYPE_SUPER = 0x52505553,         // Superblock
+    BLOCK_TYPE_JOURNAL = 0x4c4e524a,       // Journal
 } block_type_t;
 
 // ==================== B-TREE NODE CONFIGURATION ====================
