@@ -15,12 +15,21 @@ int superblock_read(DiskInterface* disk, cache *cache, Superblock* superblock)
     return 0;
 }
 
-int superblock_write(DiskInterface* disk, cache *cache, const Superblock* superblock)
+int superblock_write(DiskInterface* disk, cache *cache, const Superblock* superblock, bool write_through)
 {
     block_type_t *block_type = (block_type_t*)get_block(disk, cache, 0, 0);
     if (*block_type != BLOCK_TYPE_SUPER) return -1;
     memcpy( (Superblock*) ( block_type + 1 ), superblock, sizeof(Superblock));
-    write_block(disk, cache, block_type, 0, 0 );
+    if (write_through)
+    {
+        disk_write_block(disk, 0, block_type);
+        decrease_pin_count(disk, cache, 0, 0);
+    }
+    else
+    {
+        write_block(disk, cache, block_type, 0, 0);
+        increase_pin_count(disk, cache, 0, 0);
+    }
     return 0;
 }
 

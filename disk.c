@@ -89,7 +89,7 @@ alloc_page(DiskInterface* disk, cache *cache)
             
             sb.free_blocks--;
             
-            superblock_write(disk, cache, &sb);
+            superblock_write(disk, cache, &sb, false);
             
 			write_block(disk, cache, pbm, 0, pbmn );
             
@@ -122,7 +122,7 @@ free_page(DiskInterface* disk, cache *cache, int pnum)
     
     sb.free_blocks--;
     
-    superblock_write(disk, cache, &sb);
+    superblock_write(disk, cache, &sb, false);
     
     write_block(disk, cache, pbm, 0, pbmn );
 }
@@ -171,22 +171,6 @@ int disk_format(DiskInterface* disk, cache *cache, const char* volume_name)
 
     if (superblock_initialize(disk, cache, volume_name)) fprintf(stderr, "ERROR: Volume name too long\n");
     if (superblock_read(disk, cache, &superblock)) fprintf(stderr, "ERROR: Invalid superblock!\n");
-    printf("Allocating pages for superblock, bitmaps, and inode table...\n");
-    if(!alloc_page(disk, cache)) return -1;
-    for (int i=1; i < (superblock.inode_bitmap+calculate_inode_bitmap_size(&superblock)+calculate_inode_table_size(&superblock)) ; i++)
-    {
-        if(!alloc_page(disk, cache)) return -1;
-    }
-    //superblock.free_blocks = superblock.total_blocks - (superblock.inode_bitmap+calculate_inode_bitmap_size(&superblock)+calculate_inode_table_size(&superblock));
-    printf("Usable block size / inode size : %lu\n", USABLE_BLOCK_SIZE/sizeof(struct Inode));
-
-	printf("Allocating journal...\n");
-
-	for(int i=0; i < calculate_journal_size(&superblock); i++)
-	{
-		if(!alloc_page(disk, cache)) return -1;
-	}
-
 	printf("Setting block types to BITMAP for bitmaps...\n");
 	block_type_t *block_type;
 	for (int i=1; i < superblock.inode_bitmap+calculate_inode_bitmap_size(&superblock); i++ )
@@ -200,12 +184,30 @@ int disk_format(DiskInterface* disk, cache *cache, const char* volume_name)
 		block_type = (block_type_t*)get_block(disk, cache, 0, i);
 		*block_type = BLOCK_TYPE_INODE;
 	}
-	printf("Setting block types to JOURNAL for inode table blocks...\n");
+	printf("Setting block types to JOURNAL for journal blocks...\n");
 	for (int i=( superblock.inode_bitmap+calculate_inode_bitmap_size(&superblock)+calculate_inode_table_size(&superblock) ); i < ( superblock.inode_bitmap+calculate_inode_bitmap_size(&superblock)+calculate_inode_table_size(&superblock)+calculate_journal_size(&superblock) ); i++ )
 	{
 		block_type = (block_type_t*)get_block(disk, cache, 0, i);
 		*block_type = BLOCK_TYPE_JOURNAL;
 	}
+    printf("Allocating pages for superblock, bitmaps, and inode table...\n");
+    alloc_page(disk, cache);
+    for (int i=1; i < (superblock.inode_bitmap+calculate_inode_bitmap_size(&superblock)+calculate_inode_table_size(&superblock)) ; i++)
+    {
+        if(!alloc_page(disk, cache)) return -1;
+    }
+    //superblock.free_blocks = superblock.total_blocks - (superblock.inode_bitmap+calculate_inode_bitmap_size(&superblock)+calculate_inode_table_size(&superblock));
+    printf("Usable block size / inode size : %lu\n", USABLE_BLOCK_SIZE/sizeof(struct Inode));
+
+	printf("Allocating journal...\n");
+	uint64_t journal_start;
+	for(int i=0; i < calculate_journal_size(&superblock); i++)
+	{
+		journal_start = alloc_page(disk, cache);
+		if(!journal_start) return -1;
+	}
+	superblock.journal_start = journal_start;
+	superblock.journal_head = 0;
 
     printf("Creating root tree node...\n");
     uint64_t page;
@@ -217,7 +219,7 @@ int disk_format(DiskInterface* disk, cache *cache, const char* volume_name)
     printf("Free blocks: %llu\n", superblock.free_blocks);
 
     printf("Writing superblock...\n");
-    superblock_write(disk, cache, &superblock);
+    superblock_write(disk, cache, &superblock, true);
     
     return 0;
 }

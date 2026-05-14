@@ -2,6 +2,7 @@
 #define SUPERBLOCK_H
 
 #include "disk.h"
+#include <stdint.h>
 
 // File system metadata (superblock)
 typedef struct Superblock {
@@ -12,6 +13,8 @@ typedef struct Superblock {
     uint64_t inode_bitmap;           // Location of start of inode bitmap ✔
     uint64_t root_inode;             // Root directory inode number ✔
     uint64_t btree_root;             // Root of B-tree index ✔
+    uint64_t journal_start;          // First page of journal ✔
+    uint64_t journal_head;           // Position of earliest journal entry
     //uint64_t next_free_block;        // Next free block for allocation
     //uint64_t next_free_inode;        // Next available inode number
     char volume_name[32];            // Volume label ✔
@@ -21,7 +24,7 @@ typedef struct Superblock {
 
 // Superblock operations
 int superblock_read(DiskInterface* disk, cache *cache, Superblock* superblock);
-int superblock_write(DiskInterface* disk, cache *cache, const Superblock* superblock);
+int superblock_write(DiskInterface* disk, cache *cache, const Superblock* superblock, bool write_through);
 int superblock_initialize(DiskInterface* disk, cache *cache, const char* volume_name);
 
 // inode offsets

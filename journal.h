@@ -9,6 +9,7 @@
 
 typedef enum transaction_type_t
 {
+    UNITIALIZED = 0x0,
     MKNOD = 0x444e4b4d,
     UNLINK = 0x4b4e4c55,
     LINK = 0x4b4e494c,

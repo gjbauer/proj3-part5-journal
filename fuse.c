@@ -426,6 +426,8 @@ void nbtrfs_destroy(void *private_data)
     
     printf("Unmounting: Syncing data and cleaning up...\n");
 
+    sync_journal(disk, cache_s);
+
     cache_sync(disk, cache_s);
     
     printf("Unmounting: Freeing cache...\n");
@@ -469,6 +471,7 @@ main(int argc, char *argv[])
     //storage_init(argv[--argc]);
     disk = disk_open(argv[--argc]);
     cache_s = alloc_cache();
+    sync_journal(disk, cache_s);
     nbtrfs_init_ops(&nbtrfs_ops);
     return fuse_main(argc, argv, &nbtrfs_ops, NULL);
 }
