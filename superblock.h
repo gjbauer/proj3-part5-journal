@@ -2,7 +2,6 @@
 #define SUPERBLOCK_H
 
 #include "disk.h"
-#include <stdint.h>
 
 // File system metadata (superblock)
 typedef struct Superblock {

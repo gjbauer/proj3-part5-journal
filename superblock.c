@@ -10,7 +10,10 @@
 int superblock_read(DiskInterface* disk, cache *cache, Superblock* superblock)
 {
     block_type_t *block_type = (block_type_t*)get_block(disk, cache, 0, 0);
-    if (*block_type != BLOCK_TYPE_SUPER) return -1;
+    if (*block_type != BLOCK_TYPE_SUPER) {
+        fprintf(stderr, "ERROR: Not a valid superblock!\n");
+        return -1;
+    }
     memcpy(superblock, (Superblock*) ( block_type + 1 ), sizeof(Superblock));
     return 0;
 }
@@ -19,16 +22,16 @@ int superblock_write(DiskInterface* disk, cache *cache, const Superblock* superb
 {
     block_type_t *block_type = (block_type_t*)get_block(disk, cache, 0, 0);
     if (*block_type != BLOCK_TYPE_SUPER) return -1;
-    memcpy( (Superblock*) ( block_type + 1 ), superblock, sizeof(Superblock));
+    memcpy( (Superblock*) ( block_type + 1 ), superblock, sizeof(struct Superblock));
     if (write_through)
     {
         disk_write_block(disk, 0, block_type);
-        decrease_pin_count(disk, cache, 0, 0);
+        if (cache) decrease_pin_count(disk, cache, 0, 0);
     }
     else
     {
         write_block(disk, cache, block_type, 0, 0);
-        increase_pin_count(disk, cache, 0, 0);
+        if (cache) increase_pin_count(disk, cache, 0, 0);
     }
     return 0;
 }

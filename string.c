@@ -15,29 +15,29 @@ char* parent_path(const char *path, int l)
 {
     char *pp = malloc(PATH_MAX);
     memset(pp, '\0', PATH_MAX);
-    
+
     if (l <= 1) {
         pp[0] = '/';
         return pp;
     }
-    
+
     const char *start = path;
     const char *end;
     int segment = 0;
-    
+
     // Find the last slash before the final component
     end = path + strlen(path) - 1;
     while (end > path && *end != '/') {
         end--;
     }
-    
+
     if (end == path) {
         pp[0] = '/';
     } else {
         strncpy(pp, path, end - path);
         pp[end - path] = '\0';
     }
-    
+
     return pp;
 }
 

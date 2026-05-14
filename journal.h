@@ -4,12 +4,13 @@
 #include "cache.h"
 #include <stdio.h>
 #include <stdbool.h>
-#include <limits.h>
 #include <stdint.h>
+
+#define PATH_MAX 2040
 
 typedef enum transaction_type_t
 {
-    UNITIALIZED = 0x0,
+    UNINITIALIZED = 0x0,
     MKNOD = 0x444e4b4d,
     UNLINK = 0x4b4e4c55,
     LINK = 0x4b4e494c,
@@ -20,7 +21,6 @@ typedef enum transaction_type_t
 typedef struct journal_entry_t
 {
     transaction_type_t type;
-    int position;
     bool synced;
     union
     {

@@ -5,29 +5,48 @@
 
 void initialize_journal_entry(DiskInterface *disk, cache *cache, journal_entry_t *entry)
 {
+    printf("initialize_journal_entry called with type: 0x%x\n", entry->type);
+    
     Superblock sb;
     journal_entry_t *prev_entry;
     block_type_t *block_type;
 
     superblock_read(disk, cache, &sb);
 
-    block_type = (block_type_t*)get_block(disk, cache, 0, sb.journal_start + sb.journal_head);
+    uint64_t journal_block = sb.journal_start + sb.journal_head;
+    printf("Reading journal block %llu\n", journal_block);
+    
+    block_type = (block_type_t*)get_block(disk, cache, 0, journal_block);
+    
+    if (*block_type != BLOCK_TYPE_JOURNAL) {
+        printf("ERROR: Block %llu is not a journal block! type=0x%x\n", journal_block, *block_type);
+        // Don't proceed - journal is corrupted
+        return;
+    }
+    
     prev_entry = (journal_entry_t*)(block_type + 1);
-    sync_entry(disk, cache, prev_entry);
+    
+    if (prev_entry->type != UNINITIALIZED) {
+        printf("Found existing journal entry, syncing...\n");
+        sync_entry(disk, cache, prev_entry);
+    }
 
-    if (sb.journal_head == ( calculate_journal_size(&sb) - 1 ) ) sb.journal_head = 0;
-    else sb.journal_head++;
+    if (sb.journal_head == ( calculate_journal_size(&sb) - 1 ) ) 
+        sb.journal_head = 0;
+    else
+        sb.journal_head++;
 
     superblock_write(disk, cache, &sb, true);
 
     memcpy(prev_entry, entry, sizeof(struct journal_entry_t));
+    printf("Journal entry written, new head = %llu\n", sb.journal_head);
 }
 
 void sync_entry(DiskInterface *disk, cache *cache, journal_entry_t *entry)
 {
     switch (entry->type)
     {
-        case UNITIALIZED:
+        case UNINITIALIZED:
             break;
         case MKNOD:
             _mknod(disk, cache, entry->mknod.path, entry->mknod.mode, true);

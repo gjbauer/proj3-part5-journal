@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
     if (argc % 2 != 0)
     {
         fprintf(stderr, "ERROR: Invalid number of arguments!!\n");
-        goto err;
+        goto err1;
     }
     if (argc > 2)
     {
@@ -20,9 +20,13 @@ int main(int argc, char *argv[])
     }
     DiskInterface* disk = disk_open(argv[--argc]);
     cache *cache = NULL;
-    if (disk_format(disk, cache, volume_name)) goto err;
+    if (disk_format(disk, cache, volume_name)) goto err2;
+    disk_close(disk);
     return 0;
-err:
+err2:
+    disk_close(disk);
+    return rv;
+err1:
     fprintf(stderr, "ERROR: Could not format disk!!\n");
     return rv;
 }
