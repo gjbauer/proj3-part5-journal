@@ -1,0 +1,5 @@
+my.img
+*.dSYM/*
+mkfs.nbtrfs
+test.log
+fuse
