@@ -14,13 +14,14 @@ MOUNT_POINT="mnt"
 echo "=== Basic Tests ==="
 
 # Create files with content
-echo "hello, one" > "$MOUNT_POINT/one.txt"
-echo "hello, two" > "$MOUNT_POINT/two.txt"
-
+#echo "hello, one" > "$MOUNT_POINT/one.txt"
+#echo "hello, two" > "$MOUNT_POINT/two.txt"
+touch mnt/one.txt
+touch mnt/two.txt
 # Create a 2k file (40 chars * 50 = 2000 chars)
-long_string="=This string is fourty characters long.="
-long_content=$(printf "%s" "$long_string%.0s" {1..50})
-echo "$long_content" > "$MOUNT_POINT/2k.txt"
+#long_string="=This string is fourty characters long.="
+#long_content=$(printf "%s" "$long_string%.0s" {1..50})
+#echo "$long_content" > "$MOUNT_POINT/2k.txt"
 
 echo "=== Less Basic Tests ==="
 

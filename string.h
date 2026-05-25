@@ -2,7 +2,7 @@
 #define STRING_H
 
 #include <string.h>
-#include <limits.h>
+#include "journal.h"
 #include <stdlib.h>
 #include <stdio.h>
 

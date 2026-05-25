@@ -352,6 +352,11 @@ nbtrfs_write(const char *path, const char *buf, size_t size, off_t offset, struc
             //write_block(disk, cache_s, block_type, node.inode_number, pnum);
             inode_set_block(disk, cache_s, &node, page_index, pnum);
             inode_write(disk, cache_s, &node, false);
+            journal_entry_t entry;
+            entry.write.inode_number = node.inode_number;
+            entry.write.block_index = page_index;
+            entry.write.physical_block = pnum;
+            initialize_journal_entry(disk, cache_s, &entry);
         }
         
         // Get pointer to the page data
@@ -426,6 +431,10 @@ void nbtrfs_destroy(void *private_data)
     
     printf("Unmounting: Syncing data and cleaning up...\n");
 
+    printf("Syncing journal entries...");
+    sync_journal(disk, cache_s);
+
+    printf("Syncing cache...");
     cache_sync(disk, cache_s);
     
     printf("Unmounting: Freeing cache...\n");
@@ -469,6 +478,7 @@ main(int argc, char *argv[])
     //storage_init(argv[--argc]);
     disk = disk_open(argv[--argc]);
     cache_s = alloc_cache();
+    sync_journal(disk, cache_s);
     nbtrfs_init_ops(&nbtrfs_ops);
     return fuse_main(argc, argv, &nbtrfs_ops, NULL);
 }

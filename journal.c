@@ -19,22 +19,20 @@ void initialize_journal_entry(DiskInterface *disk, cache *cache, journal_entry_t
     block_type = (block_type_t*)get_block(disk, cache, 0, journal_block);
     
     if (*block_type != BLOCK_TYPE_JOURNAL) {
-        printf("ERROR: Block %llu is not a journal block! type=0x%x\n", journal_block, *block_type);
+        fprintf(stderr, "ERROR: Block %llu is not a journal block! type=0x%x\n", journal_block, *block_type);
         // Don't proceed - journal is corrupted
         return;
     }
     
     prev_entry = (journal_entry_t*)(block_type + 1);
     
-    if (prev_entry->type != UNINITIALIZED) {
+    if (prev_entry->type != UNINITIALIZED && !prev_entry->synced) {
         printf("Found existing journal entry, syncing...\n");
         sync_entry(disk, cache, prev_entry);
     }
 
-    if (sb.journal_head == ( calculate_journal_size(&sb) - 1 ) ) 
-        sb.journal_head = 0;
-    else
-        sb.journal_head++;
+    if (sb.journal_head == ( calculate_journal_size(&sb) - 1 ) ) sb.journal_head = 0;
+    else sb.journal_head++;
 
     superblock_write(disk, cache, &sb, true);
 
@@ -63,6 +61,9 @@ void sync_entry(DiskInterface *disk, cache *cache, journal_entry_t *entry)
         case TRUNCATE:
             _truncate(disk, cache, entry->truncate.path, entry->truncate.size, true);
             break;
+        case WRITE:
+            _set_block(disk, cache, entry->write.inode_number, entry->write.block_index, entry->write.physical_block);
+            break;
     }
     entry->synced = true;
 }
@@ -79,7 +80,17 @@ void sync_journal(DiskInterface *disk, cache *cache)
     {
         block_type = (block_type_t*)get_block(disk, cache, 0, sb.journal_start + sb.journal_head);
         prev_entry = (journal_entry_t*)(block_type + 1);
-        sync_entry(disk, cache, prev_entry);
+
+        if (*block_type != BLOCK_TYPE_JOURNAL) {
+            fprintf(stderr, "ERROR: Block %llu is not a journal block! type=0x%x\n", sb.journal_start + sb.journal_head, *block_type);
+            // Don't proceed - journal is corrupted
+            return;
+        }
+
+        if (prev_entry->type != UNINITIALIZED && !prev_entry->synced) {
+            printf("Found existing journal entry, syncing...\n");
+            sync_entry(disk, cache, prev_entry);
+        }
 
         if (sb.journal_head == ( calculate_journal_size(&sb) - 1 ) ) sb.journal_head = 0;
         else sb.journal_head++;

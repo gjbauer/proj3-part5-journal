@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <limits.h>
+#include "journal.h"
 #include <string.h>
 #include <errno.h>
 #include "btr.h"
@@ -10,6 +10,34 @@
 #else
 #include <stdlib.h>
 #endif
+
+int btree_write(DiskInterface *disk, cache *cache, uint64_t block_num)
+{
+	int rv = 0;
+	block_type_t *block_type = (block_type_t*) get_block(disk, cache, 0, block_num);
+	if (*block_type != BLOCK_TYPE_BTREE_NODE)
+	{
+		fprintf(stderr, "ERROR: Not a valid B-Tree node!\n");
+		return -1;
+	}
+	BTreeNode *node = (BTreeNode*)( block_type + 1 );
+
+	if (!disk_write_block(disk, node->block_number, block_type))
+	{
+		rv++;
+		decrease_pin_count(disk, cache, 0, node->block_number);
+	}
+
+	for (int i=0; i <= node->num_keys; i++)
+	{
+		if (node->children[i])
+		{
+			rv += btree_write(disk, cache, node->children[i]);
+		}
+		else break;
+	}
+	return rv;
+}
 
 /**
  * Create a new B-tree node on disk

@@ -8,6 +8,94 @@
 #include <string.h>
 #include <errno.h>
 
+int directory_sync_entry(DiskInterface* disk, cache *cache, const char *path, const char* name)
+{
+    int rv = -1;
+    InodeBtreePair *ppair = item_search(disk, cache, path);
+    char absolute[PATH_MAX];
+    snprintf(absolute, PATH_MAX, "%s\\%s", path, name);
+    InodeBtreePair *pair = item_search(disk, cache, absolute);
+    Inode node = {0};
+    uint64_t block;
+    uint16_t count = 0;
+    uint16_t number_of_entries;
+    block_type_t *block_type;
+    DirectoryBlock *db;
+    DirEntry *entry;
+
+    inode_read(disk, cache, ppair->inode_number, &node);
+    for (uint16_t i=0; i < ( ( UINT16_MAX * sizeof(struct DirEntry) ) / USABLE_BLOCK_SIZE ); i++)
+    {
+        block = 0;
+        inode_get_block(disk, cache, &node, i, &block);
+        if (!block)
+        {
+            block = alloc_page(disk, cache);
+            if (!block) goto free_pairs;
+            inode_set_block(disk, cache, &node, i, block);
+            block_type = get_block(disk, cache, ppair->inode_number, block);
+            *block_type = BLOCK_TYPE_DATA;
+            inode_write(disk, cache, &node, true);
+            if (0 == i)
+            {
+                db = (DirectoryBlock*) ( block_type + 1 );
+                db->entry_count = 0;
+            }
+            write_block(disk, cache, block_type, 0, block);
+        }
+        else block_type = get_block(disk, cache, ppair->inode_number, block);
+
+        if (BLOCK_TYPE_DATA != *block_type)
+        {
+            fprintf(stderr, "ERROR: Not a data type block!!\n");
+            rv = -1;
+            goto free_pairs;
+        }
+
+        if (0 == i)
+        {
+            db = (DirectoryBlock*) ( block_type + 1 );
+            entry = (DirEntry*) ( db + 1 );
+            number_of_entries = db->entry_count;
+        }
+        else entry = (DirEntry*) ( block_type + 1 );
+
+        uint16_t entries_per_block;
+        if (0 == i) {
+            // First block has DirectoryBlock header
+            entries_per_block = (USABLE_BLOCK_SIZE-sizeof(struct DirectoryBlock)) / sizeof(struct DirEntry);
+        } else {
+            // Subsequent blocks are just entries
+            entries_per_block = USABLE_BLOCK_SIZE / sizeof(struct DirEntry);
+        }
+        for (uint16_t j=0; j < entries_per_block ; j++)
+        {
+            if (!strcmp(entry[j].name, name))
+            {
+                number_of_entries++;
+                disk_write_block(disk, block, block_type);
+                decrease_pin_count(disk, cache, pair->inode_number, block);
+                inode_get_block(disk, cache, &node, 0, &block);
+                block_type = get_block(disk, cache, ppair->inode_number, block);
+                db = (DirectoryBlock*) ( block_type + 1 );
+                db->entry_count = number_of_entries;
+                disk_write_block(disk, block, block_type);
+                decrease_pin_count(disk, cache, pair->inode_number, block);
+                write_block(disk, cache, block_type, 0, block);
+                rv = 0;
+                goto free_pairs;
+        }
+        if (entry[j].active) count++;
+        }
+    }
+free_pairs:
+    arc4random_buf(ppair, sizeof(struct InodeBtreePair));
+    arc4random_buf(pair, sizeof(struct InodeBtreePair));
+    free(ppair);
+    free(pair);
+    return rv;
+}
+
 int directory_add_entry(DiskInterface* disk, cache *cache, const char *path, const char* name, uint64_t target_inode, FileType type, bool write_through)
 {
     int rv = -1;
@@ -138,6 +226,7 @@ int directory_add_entry(DiskInterface* disk, cache *cache, const char *path, con
         }
     }
 free_pair:
+    arc4random_buf(pair, sizeof(struct InodeBtreePair));
     free(pair);
     return rv;
 }
@@ -229,6 +318,7 @@ int directory_remove_entry(DiskInterface* disk, cache *cache, const char *path, 
         }
     }
 free_pair:
+    arc4random_buf(pair, sizeof(struct InodeBtreePair));
     free(pair);
     return rv;
 }
@@ -281,6 +371,7 @@ int directory_list(DiskInterface* disk, cache *cache, const char *path, DirEntry
         printf("  entry %d: name='%s', inode=%llu, active=%d\n",
                i, (*entries)[i].name, (*entries)[i].inode_number, (*entries)[i].active);
     }
+    arc4random_buf(pair, sizeof(struct InodeBtreePair));
     free(pair);
     return rv;
 }

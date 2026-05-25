@@ -32,6 +32,8 @@ typedef struct BTreeNode {
 
 // ==================== B-TREE OPERATIONS ====================
 
+int btree_write(DiskInterface *disk, cache *cache, uint64_t block_num);
+
 // ==================== NODE MANAGEMENT ====================
 
 /**

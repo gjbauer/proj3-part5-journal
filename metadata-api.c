@@ -1,10 +1,28 @@
 #include "metadata-api.h"
+#include "btr.h"
+#include "directory.h"
+#include "hash.h"
 
 int _mknod(DiskInterface *disk, cache *cache, const char *path, mode_t mode, bool write_through)
 {
-    Inode node;
+    InodeBtreePair *pair = item_search(disk, cache, path);
     char *parent = parent_path(path, count_l(path));
     char *name = get_name(path);
+    if (pair->inode_number)
+    {
+        free(pair);
+        pair = item_search(disk, cache, parent);
+        btree_write(disk, cache, pair->btree_block);
+        directory_sync_entry(disk, cache, parent, name);
+        arc4random_buf(pair, sizeof(struct InodeBtreePair));
+        arc4random_buf(parent, strlen(parent));
+        arc4random_buf(name, strlen(name));
+        free(pair);
+        free(parent);
+        free(name);
+        return 0;
+    }
+    Inode node;
     int rv = inode_allocate(disk, cache, mode, write_through);
     if (-1 == rv) goto print;
     rv = inode_read(disk, cache, rv, &node);
@@ -15,8 +33,10 @@ int _mknod(DiskInterface *disk, cache *cache, const char *path, mode_t mode, boo
     rv = directory_add_entry(disk, cache, parent, name, node.inode_number, ( mode & S_IFMT), write_through);
 print:
     arc4random_buf(&node, sizeof(struct Inode));
-    arc4random_buf(parent, sizeof(char)*strlen(parent));
+    arc4random_buf(pair, sizeof(struct InodeBtreePair));
+    arc4random_buf(parent, sizeof(strlen(parent)));
     arc4random_buf(name, sizeof(char)*strlen(name));
+    free(pair);
     free(parent);
     free(name);
     printf("mknod(%s, %04o) -> %d\n", path, mode, rv);
@@ -83,4 +103,43 @@ int _truncate(DiskInterface *disk, cache *cache, const char *path, off_t size, b
     // TODO: Implement truncate
     printf("truncate(%s, %lld bytes) -> %d\n", path, size, rv);
     return rv;
+}
+
+int _set_block(DiskInterface *disk, cache *cache, int64_t inode_number, uint64_t block_index, uint64_t physical_block)
+{
+    int rv = -1;
+    Inode inode;
+    if (block_index < 12)
+    {
+        inode.direct_blocks[block_index] = physical_block;
+        rv = 0;
+    }
+    else if (block_index <= ( USABLE_BLOCK_SIZE / sizeof(uint64_t) ) )
+    {
+        if (!inode.indirect_block)
+        {
+            inode.indirect_block = alloc_page(disk, cache);
+            if (!inode.indirect_block) return rv;
+            block_type_t *block_type = get_block(disk, cache, inode.inode_number, inode.indirect_block);
+            *block_type = BLOCK_TYPE_DATA;
+            inode_write(disk, cache, &inode, true);
+            inode_read(disk, cache, inode.inode_number, &inode);
+            uint64_t *sind = (uint64_t*)( block_type + 1 );
+            memset(sind, 0, USABLE_BLOCK_SIZE);
+            write_block(disk, cache, block_type, inode.inode_number, inode.indirect_block);
+        }
+
+        // Now set the specific block pointer
+        block_type_t *block_type = get_block(disk, cache, inode.inode_number, inode.indirect_block);
+        uint64_t *sind = (uint64_t*)( block_type + 1 );
+        sind += ( block_index - 12 );
+        *sind = physical_block;
+        write_block(disk, cache, block_type, inode.inode_number, inode.indirect_block);
+        disk_write_block(disk, inode.indirect_block, block_type);
+        block_type = get_block(disk, cache, inode.inode_number, physical_block);
+        *block_type = BLOCK_TYPE_DATA;
+        write_block(disk, cache, block_type, inode.inode_number, physical_block);
+        disk_write_block(disk, physical_block, block_type);
+        rv = 0;
+    }
 }

@@ -13,7 +13,7 @@ typedef struct Superblock {
     uint64_t root_inode;             // Root directory inode number ✔
     uint64_t btree_root;             // Root of B-tree index ✔
     uint64_t journal_start;          // First page of journal ✔
-    uint64_t journal_head;           // Position of earliest journal entry
+    uint64_t journal_head;           // Position of earliest journal entry ✔
     //uint64_t next_free_block;        // Next free block for allocation
     //uint64_t next_free_inode;        // Next available inode number
     char volume_name[32];            // Volume label ✔

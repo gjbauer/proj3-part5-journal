@@ -12,4 +12,4 @@ make format
 
 make fuse
 
-lldb -- ./fuse "-s -f mnt my.img"
+lldb -- ./fuse "./fuse -s -f mnt my.img"

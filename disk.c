@@ -93,6 +93,7 @@ alloc_page(DiskInterface* disk, cache *cache)
             superblock_write(disk, cache, &sb, false);
             
 			write_block(disk, cache, pbm, 0, pbmn );
+			disk_write_block(disk, pbmn, pbm);
             
 			printf("+ alloc_page() -> %d\n", ii);
 			return ii;
@@ -126,6 +127,7 @@ free_page(DiskInterface* disk, cache *cache, int pnum)
     superblock_write(disk, cache, &sb, false);
     
     write_block(disk, cache, pbm, 0, pbmn );
+	disk_write_block(disk, pbmn, pbm);
 }
 
 /**
