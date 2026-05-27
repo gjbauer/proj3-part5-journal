@@ -432,10 +432,10 @@ void nbtrfs_destroy(void *private_data)
     
     printf("Unmounting: Syncing data and cleaning up...\n");
 
-    printf("Syncing journal entries...");
+    printf("Syncing journal entries...\n");
     sync_journal(disk, cache_s);
 
-    printf("Syncing cache...");
+    printf("Syncing cache...\n");
     cache_sync(disk, cache_s);
     
     printf("Unmounting: Freeing cache...\n");

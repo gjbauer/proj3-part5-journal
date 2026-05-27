@@ -105,10 +105,17 @@ int _truncate(DiskInterface *disk, cache *cache, const char *path, off_t size, b
     return rv;
 }
 
-int _set_block(DiskInterface *disk, cache *cache, int64_t inode_number, uint64_t block_index, uint64_t physical_block)
+int _set_block(DiskInterface *disk, cache *cache, int64_t inode_number,
+               uint64_t block_index, uint64_t physical_block)
 {
     int rv = -1;
     Inode inode;
+
+    if (inode_read(disk, cache, inode_number, &inode) != 0) {
+        fprintf(stderr, "ERROR: Could not read inode %lld!!\n", inode_number);
+        return -1;
+    }
+
     if (block_index < 12)
     {
         inode.direct_blocks[block_index] = physical_block;
@@ -127,9 +134,8 @@ int _set_block(DiskInterface *disk, cache *cache, int64_t inode_number, uint64_t
             uint64_t *sind = (uint64_t*)( block_type + 1 );
             memset(sind, 0, USABLE_BLOCK_SIZE);
             write_block(disk, cache, block_type, inode.inode_number, inode.indirect_block);
+            disk_write_block(disk, inode.indirect_block, block_type);
         }
-
-        // Now set the specific block pointer
         block_type_t *block_type = get_block(disk, cache, inode.inode_number, inode.indirect_block);
         uint64_t *sind = (uint64_t*)( block_type + 1 );
         sind += ( block_index - 12 );
@@ -142,4 +148,10 @@ int _set_block(DiskInterface *disk, cache *cache, int64_t inode_number, uint64_t
         disk_write_block(disk, physical_block, block_type);
         rv = 0;
     }
+
+    if (inode_write(disk, cache, &inode, true) != 0) {
+        return -1;
+    }
+
+    return rv;
 }

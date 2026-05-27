@@ -37,12 +37,6 @@ int directory_sync_entry(DiskInterface* disk, cache *cache, const char *path, co
             block_type = get_block(disk, cache, ppair->inode_number, block);
             *block_type = BLOCK_TYPE_DATA;
             inode_write(disk, cache, &node, true);
-            journal_entry_t entry;
-            entry.type = WRITE;
-            entry.write.inode_number = node.inode_number;
-            entry.write.block_index = i;
-            entry.write.physical_block = block;
-            initialize_journal_entry(disk, cache, &entry);
             if (0 == i)
             {
                 db = (DirectoryBlock*) ( block_type + 1 );
@@ -135,6 +129,13 @@ int directory_add_entry(DiskInterface* disk, cache *cache, const char *path, con
                 block_type = get_block(disk, cache, pair->inode_number, block);
                 *block_type = BLOCK_TYPE_DATA;
                 inode_write(disk, cache, &node, write_through);
+                journal_entry_t entry;
+                entry.type = WRITE;
+                entry.write.inode_number = node.inode_number;
+                entry.write.block_index = i;
+                entry.write.physical_block = block;
+                printf("WRITE to directory block # %llu\n", block);
+                initialize_journal_entry(disk, cache, &entry);
                 if (0 == i)
                 {
                     db = (DirectoryBlock*) ( block_type + 1 );
@@ -172,8 +173,8 @@ int directory_add_entry(DiskInterface* disk, cache *cache, const char *path, con
                 if (!entry[j].active || count == number_of_entries)
                 {
                     number_of_entries++;
-                    printf("Adding entry: name='%s', inode=%llu, type=%d, count before=%d, count after=%d\n",
-                           name, target_inode, type, number_of_entries - 1, number_of_entries);
+                    printf("Adding entry: name='%s', inode=%llu, type=%d, count before=%d, count after=%d, block=%llu\n",
+                           name, target_inode, type, number_of_entries - 1, number_of_entries, block);
                     if (FILE_TYPE_DIRECTORY == type)
                     {
                         uint64_t dir_root_page;
@@ -345,6 +346,7 @@ int directory_list(DiskInterface* disk, cache *cache, const char *path, DirEntry
         for (uint16_t i=0; i < ( ( UINT16_MAX * sizeof(struct DirEntry) ) / USABLE_BLOCK_SIZE ); i++)
         {
             inode_get_block(disk, cache, &node, i, &block);
+            printf("Getting block number: %llu\n", block);
             if (!block)
                 break;
             block_type = get_block(disk, cache, pair->inode_number, block);
