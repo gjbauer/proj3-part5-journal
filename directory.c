@@ -84,8 +84,8 @@ int directory_sync_entry(DiskInterface* disk, cache *cache, const char *path, co
                 write_block(disk, cache, block_type, 0, block);
                 rv = 0;
                 goto free_pairs;
-        }
-        if (entry[j].active) count++;
+            }
+            if (entry[j].active) count++;
         }
     }
 free_pairs:
