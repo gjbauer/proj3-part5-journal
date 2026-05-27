@@ -27,8 +27,8 @@ sub mount {
         open(my $fh, ">>", $log_file) or die "Can't open $log_file: $!";
         
         # 2. Redirect STDOUT and STDERR to the log file
-        open(STDOUT, ">&", $fh) or die "Can't dup STDOUT: $!";
-        open(STDERR, ">&", $fh) or die "Can't dup STDERR: $!";
+        #open(STDOUT, ">&", $fh) or die "Can't dup STDOUT: $!";
+        #open(STDERR, ">&", $fh) or die "Can't dup STDERR: $!";
         
         # 3. Replace child process with FUSE mount
         exec("./fuse", "-s", "-f", "mnt", "my.img") or die "Exec failed: $!";
@@ -142,6 +142,7 @@ ok($files =~ /one\.txt/, "one.txt is in the directory still");
 ok($files =~ /two\.txt/, "two.txt is in the directory still");
 
 my $exit_status = system("rm mnt/one.txt") >> 8;
+$files = `ls mnt`;
 ok($exit_status eq 0 && $files !~ /one\.txt/, "deleted one.txt");
 
 kill_mount($pid);
@@ -152,7 +153,7 @@ if ($exit_status eq 0) {
     $files = `ls mnt`;
     ok($files !~ /one\.txt/, "one.txt is not present after re-mount");
 }
-
+=cut
 # Journal only covers metadata, so we have to write the data again
 write_text("two.txt", $msg2);
 $exit_status = system("mv mnt/two.txt mnt/abc.txt") >> 8;
@@ -164,7 +165,7 @@ my $msg4 = read_text("abc.txt");
 say "# '$msg2' eq '$msg4'?";
 ok($msg2 eq $msg4, "Read back data after rename.");
 
-=cut
+#=cut
 
 say "#           == Less Basic Tests ==";
 
