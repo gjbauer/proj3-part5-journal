@@ -100,7 +100,28 @@ int _chmod(DiskInterface *disk, cache *cache, const char *path, mode_t mode, boo
 int _truncate(DiskInterface *disk, cache *cache, const char *path, off_t size, bool write_through)
 {
     int rv = 0;
-    // TODO: Implement truncate
+    InodeBtreePair *pair = item_search(disk, cache, path);
+    Inode inode;
+    inode_read(disk, cache, pair->inode_number, &inode);
+
+    if (size < inode.size) {
+        // Need to free blocks - but this should be idempotent
+        // Calculate which blocks to free based on new vs old size
+        uint64_t old_blocks = (inode.size + USABLE_BLOCK_SIZE - 1) / USABLE_BLOCK_SIZE;
+        uint64_t new_blocks = (size + USABLE_BLOCK_SIZE - 1) / USABLE_BLOCK_SIZE;
+
+        for (uint64_t i = new_blocks; i < old_blocks; i++) {
+            uint64_t physical_block = 0;
+            if (!inode_get_block(disk, cache, &inode, i, &physical_block) && physical_block) {
+                free_page(disk, cache, physical_block);
+                inode_set_block(disk, cache, &inode, i, 0);
+            }
+        }
+    }
+
+    inode.size = size;
+    inode_write(disk, cache, &inode, write_through);
+    // TODO: Free empty indirect and double-indirect blocks when empty
     printf("truncate(%s, %lld bytes) -> %d\n", path, size, rv);
     return rv;
 }
