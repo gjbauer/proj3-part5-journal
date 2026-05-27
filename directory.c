@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include "journal.h"
 
 int directory_sync_entry(DiskInterface* disk, cache *cache, const char *path, const char* name)
 {
@@ -36,6 +37,12 @@ int directory_sync_entry(DiskInterface* disk, cache *cache, const char *path, co
             block_type = get_block(disk, cache, ppair->inode_number, block);
             *block_type = BLOCK_TYPE_DATA;
             inode_write(disk, cache, &node, true);
+            journal_entry_t entry;
+            entry.type = WRITE;
+            entry.write.inode_number = node.inode_number;
+            entry.write.block_index = i;
+            entry.write.physical_block = block;
+            initialize_journal_entry(disk, cache, &entry);
             if (0 == i)
             {
                 db = (DirectoryBlock*) ( block_type + 1 );

@@ -5,7 +5,32 @@
 
 void initialize_journal_entry(DiskInterface *disk, cache *cache, journal_entry_t *entry)
 {
-    printf("initialize_journal_entry called with type: 0x%x\n", entry->type);
+    //printf("initialize_journal_entry called with type: 0x%x\n", entry->type);
+    printf("initialize_journal_entry called with type: ");
+    switch (entry->type)
+    {
+        case MKNOD:
+            printf("MKNOD\n");
+            break;
+        case UNLINK:
+            printf("UNLINK\n");
+            break;
+        case LINK:
+            printf("LINK\n");
+            break;
+        case CHMOD:
+            printf("CHMOD\n");
+            break;
+        case TRUNCATE:
+            printf("TRUNCATE\n");
+            break;
+        case WRITE:
+            printf("WRITE\n");
+            break;
+        default:
+            printf("INVALID TYPE\n");
+            break;
+    }
 
     Superblock sb;
     journal_entry_t *prev_entry;

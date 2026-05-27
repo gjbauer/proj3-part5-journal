@@ -353,6 +353,7 @@ nbtrfs_write(const char *path, const char *buf, size_t size, off_t offset, struc
             inode_set_block(disk, cache_s, &node, page_index, pnum);
             inode_write(disk, cache_s, &node, false);
             journal_entry_t entry;
+            entry.type = WRITE;
             entry.write.inode_number = node.inode_number;
             entry.write.block_index = page_index;
             entry.write.physical_block = pnum;
