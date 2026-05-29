@@ -55,7 +55,7 @@ The implementation prioritizes data sanitization upon freeing memory to prevent 
 
 The project uses a simple `GNUmakefile` to build on Linux and macOS, as well as a `BSDmakefile` for compilation on FreeBSD. The project requires the `bsd` library for `arc4random_buf` when compiling on Linux.
 
-Currently, two Linux distributions are supported for the `install-deps.sh` script: Linux Mint and Debian, although Arch Linux will be added when I start doing my testing on Arch Linux. FreeBSD is supported. The macOS version requires [Homebrew](https://brew.sh) to be installed. It will also require the user to manually enable to macfuse kernel module. If planning to run the test suites, the user must also install Perl as well on their system of choice.
+Currently, three Linux distributions are supported for the `install-deps.sh` script: Ubuntu, Linux Mint and Debian, although Arch Linux may be added in the future if I decide to create PKGBUILDs for the project. FreeBSD is supported. The macOS version requires [Homebrew](https://brew.sh) to be installed. It will also require the user to manually enable to macfuse kernel module. If planning to run the test suites, the user must also install Perl as well on their system of choice.
 
 ---
 
@@ -65,11 +65,11 @@ This project contains two Perl tests suites. The first test suite under the name
 
 ### Safe Condition Tests
 
-The current version of the filesystem passes all of the tests on macOS and Arch Linux. Tests will also be performed on FreeBSD for consistency.
+The current version of the filesystem passes all of the tests on macOS, Arch Linux x86_64, and Ubuntu ARM64. Tests will also be performed on FreeBSD for consistency.
 
 macOS:
 ![](screen.png)
-Arch Linux:
+Ubuntu ARM64:
 ![](screen-arch.png)
 
 ### Journaling Tests
