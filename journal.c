@@ -40,6 +40,8 @@ void initialize_journal_entry(DiskInterface *disk, cache *cache, journal_entry_t
 
     uint64_t journal_block = sb.journal_start + sb.journal_head;
     printf("Reading journal block %llu\n", journal_block);
+    
+    entry->block_number = journal_block;
 
     block_type = (block_type_t*)get_block(disk, cache, 0, journal_block);
 
@@ -51,7 +53,7 @@ void initialize_journal_entry(DiskInterface *disk, cache *cache, journal_entry_t
 
     prev_entry = (journal_entry_t*)(block_type + 1);
 
-    if (prev_entry->type != UNINITIALIZED && !prev_entry->synced) {
+    if (!prev_entry->synced) {
         printf("Found existing journal entry, syncing...\n");
         sync_entry(disk, cache, prev_entry);
     }
@@ -62,36 +64,48 @@ void initialize_journal_entry(DiskInterface *disk, cache *cache, journal_entry_t
     superblock_write(disk, cache, &sb, true);
 
     memcpy(prev_entry, entry, sizeof(struct journal_entry_t));
-    write_block(disk, cache, block_type, 0, journal_block);
+    disk_write_block(disk, journal_block, block_type);
     printf("Journal entry written, new head = %llu\n", sb.journal_head);
 }
 
 void sync_entry(DiskInterface *disk, cache *cache, journal_entry_t *entry)
 {
+    printf("Syncing_journal_entry called with type: ");
     switch (entry->type)
     {
         case UNINITIALIZED:
+            printf("UNITIALIZED\n");
             break;
         case MKNOD:
+            printf("MKNOD\n");
             _mknod(disk, cache, entry->mknod.path, entry->mknod.mode, true);
             break;
         case UNLINK:
+            printf("UNLINK\n");
             _unlink(disk, cache, entry->unlink.path, true);
             break;
         case LINK:
+            printf("LINK\n");
             _link(disk, cache, entry->link.from, entry->link.to, true);
             break;
         case CHMOD:
+            printf("CHMOD\n");
             _chmod(disk, cache, entry->chmod.path, entry->chmod.mode, true);
             break;
         case TRUNCATE:
+            printf("TRUNCATE\n");
             _truncate(disk, cache, entry->truncate.path, entry->truncate.size, true);
             break;
         case WRITE:
+            printf("WRITE\n");
             _set_block(disk, cache, entry->write.inode_number, entry->write.block_index, entry->write.physical_block);
             break;
     }
     entry->synced = true;
+    
+    block_type_t *block_type;
+    block_type = ( (block_type_t*) entry - 1 );
+    disk_write_block(disk, entry->block_number, block_type);
 }
 
 void sync_journal(DiskInterface *disk, cache *cache)
@@ -121,7 +135,6 @@ void sync_journal(DiskInterface *disk, cache *cache)
 
         if (sb.journal_head == ( calculate_journal_size(&sb) - 1 ) ) sb.journal_head = 0;
         else sb.journal_head++;
+        superblock_write(disk, cache, &sb, true);
     }
-
-    superblock_write(disk, cache, &sb, true);
 }

@@ -131,7 +131,7 @@ int btree_node_write(DiskInterface* disk, cache *cache, BTreeNode* node)
 		return -1;
 	}
     
-    write_block(disk, cache, block_type, 0, node->block_number);
+	write_block(disk, cache, block_type, 0, node->block_number);
 	
 	return 0;
 }
@@ -142,39 +142,34 @@ int btree_node_write(DiskInterface* disk, cache *cache, BTreeNode* node)
  */
 uint64_t btree_search(DiskInterface* disk, cache *cache, uint64_t node_block, uint64_t key)
 {
-	BTreeNode node;
+    BTreeNode node;
     if (btree_node_read(disk, cache, node_block, &node) != 0) {
-        return 0;  // Invalid node
+        return 0;
     }
-    uint64_t rv = 0;
-	
-	if (node.is_leaf) {
-		// Base case: we're at a leaf node
-		if (node.key == key) {
-			rv = node.block_number;
-			//printf("Found key!\n");
-            goto clear_stack;
-			//arc4random_buf(&node, sizeof(struct BTreeNode));
-			//return found_block;
-		} else {
-            goto clear_stack;  // Key not found
-			//return 0;
-		}
-	} else {
-		// Recursive case: search all children
-		for (int i = 0; i <= node.num_keys; i++) {
-			if (node.children[i] != 0) {
-				rv = btree_search(disk, cache, node.children[i], key);
-				if (rv != 0) {
-					goto clear_stack;  // Found in child subtree
-				}
-			}
-		}
-		//printf("Did not find key!\n");
-	}
-clear_stack:
-	arc4random_buf(&node, sizeof(struct BTreeNode));
-	return rv;  // Key not found in any subtree
+    
+    if (node.is_leaf) {
+        if (node.key == key) {
+            return node.block_number;
+        }
+        return 0;
+    }
+    
+    // Find the correct child to search
+    int child_idx = 0;
+    for (int i = 0; i < node.num_keys; i++) {
+        if (key <= node.keys[i]) {
+            child_idx = i;
+            break;
+        }
+        child_idx = i + 1;
+    }
+    
+    // Search the correct child
+    if (node.children[child_idx] != 0) {
+        return btree_search(disk, cache, node.children[child_idx], key);
+    }
+    
+    return 0;
 }
 
 /**
@@ -643,11 +638,11 @@ void btree_remove_key(DiskInterface* disk, cache *cache, uint64_t root_block, ui
 uint64_t btree_delete(DiskInterface* disk, cache *cache, uint64_t root_block, uint64_t key)
 {
 	uint64_t rv = btree_search(disk, cache, root_block, key);
-    BTreeNode node;
+	BTreeNode node;
 	
 	if (rv!=0)
 	{
-        btree_node_read(disk, cache, rv, &node);
+        	btree_node_read(disk, cache, rv, &node);
 		btree_remove_key(disk, cache, node.parent, key);
 		btree_node_free(disk, cache, rv);
 	}
@@ -735,10 +730,10 @@ void btree_split_root(DiskInterface* disk, cache *cache, BTreeNode* root)
 	child_a->parent = root->block_number;
 	child_b->parent = root->block_number;
 	root->keys[0] = btree_find_maximum(disk, cache, child_a->block_number);
-    root->keys[1] = btree_find_maximum(disk, cache, child_b->block_number);
-    btree_node_write(disk, cache, child_a);
-    btree_node_write(disk, cache, child_b);
-    btree_node_write(disk, cache, root);
+	root->keys[1] = btree_find_maximum(disk, cache, child_b->block_number);
+	btree_node_write(disk, cache, child_a);
+	btree_node_write(disk, cache, child_b);
+	btree_node_write(disk, cache, root);
 }
 
 void btree_promote_root(DiskInterface* disk, cache *cache, BTreeNode* root)
@@ -753,7 +748,7 @@ void btree_promote_root(DiskInterface* disk, cache *cache, BTreeNode* root)
 	root->block_number = page;
 	root->parent = 0;
 	
-    btree_node_write(disk, cache, root);
+	btree_node_write(disk, cache, root);
 	btree_node_free(disk, cache, child.block_number);
 	
 	for (int i = 0; i <= root->num_keys; i++) {
@@ -768,7 +763,7 @@ void btree_promote_root(DiskInterface* disk, cache *cache, BTreeNode* root)
 
 void btree_split_child(DiskInterface* disk, cache *cache, BTreeNode* node, int index, BTreeNode* child)
 {
-    uint64_t page;
+	uint64_t page;
 	BTreeNode *child_b = btree_node_create(disk, cache, false, &page);
 	child_b->parent = node->block_number;
 	child->right_sibling = child_b->block_number;
@@ -846,8 +841,8 @@ void btree_split_child(DiskInterface* disk, cache *cache, BTreeNode* node, int i
 			}
 		}
 
-        btree_node_write(disk, cache, child);
-        btree_node_write(disk, cache, child_b);
+		btree_node_write(disk, cache, child);
+		btree_node_write(disk, cache, child_b);
 		btree_node_write(disk, cache, &current_parent);
 		arc4random_buf(&current_parent, sizeof(struct BTreeNode));
 	}

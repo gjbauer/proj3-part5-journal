@@ -7,7 +7,7 @@
 #include <stdint.h>
 
 #undef PATH_MAX
-#define PATH_MAX 2040
+#define PATH_MAX 2030
 #undef NAME_MAX
 #define NAME_MAX 256
 
@@ -25,6 +25,7 @@ typedef enum transaction_type_t
 typedef struct journal_entry_t
 {
     transaction_type_t type;
+    uint64_t block_number;
     bool synced;
     union
     {

@@ -250,6 +250,10 @@ int directory_remove_entry(DiskInterface* disk, cache *cache, const char *path, 
     DirectoryBlock *db;
     DirEntry *entry;
     
+    char absolute[PATH_MAX];
+    snprintf(absolute, PATH_MAX, "%s\%s", path, name);
+    InodeBtreePair *file_to_remove = item_search(disk, cache, path);
+    
     uint16_t count = 0;
     
     if (pair->inode_number || !strcmp(path, "/"))
@@ -283,15 +287,18 @@ int directory_remove_entry(DiskInterface* disk, cache *cache, const char *path, 
                     entry->active = false;
                     number_of_entries--;
                     inode_read(disk, cache, entry->inode_number, &file_node);
+                    
                     if (1 == file_node.reference_count)
                     {
-                        if (inode_free(disk, cache, entry->inode_number, write_through))
-                            goto free_pair;
-                        BTreeNode tree_node;
-                        uint64_t tree_node_block = btree_search(disk, cache, pair->btree_block, path_hash(name));
-                        btree_node_read(disk, cache, tree_node_block, &tree_node);
+                    	file_node.reference_count = 0;
+                        inode_write(disk, cache, &file_node, true);
+                        
                         btree_delete(disk, cache, pair->btree_block, path_hash(name));
-                        btree_print(disk, cache, pair->btree_block , 0);
+                        btree_print(disk, cache, pair->btree_block, 0);
+                        
+                        btree_write(disk, cache, pair->btree_block);
+                        
+                        inode_free(disk, cache, entry->inode_number, write_through);
                     }
                     if (write_through)
                     {
@@ -375,6 +382,7 @@ int directory_list(DiskInterface* disk, cache *cache, const char *path, DirEntry
             }
         }
     }
+    btree_print(disk, cache, pair->btree_block, 0);
     printf("=== directory_list for %s ===\n", path);
     for (int i = 0; i < rv; i++) {
         printf("  entry %d: name='%s', inode=%llu, active=%d\n",
