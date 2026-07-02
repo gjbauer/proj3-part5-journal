@@ -20,6 +20,7 @@ typedef enum transaction_type_t
     CHMOD = 0x444d4843,
     TRUNCATE = 0x54435254,
     WRITE = 0x54495257,
+    RENAME = 0x4d4e4552,
 } transaction_type_t;
 
 typedef struct journal_entry_t
@@ -59,6 +60,11 @@ typedef struct journal_entry_t
             uint64_t block_index;
             uint64_t physical_block;
         } write;
+        struct
+        {
+            char from[PATH_MAX];
+            char to[PATH_MAX];
+        } rename;
     };
 } journal_entry_t;
 

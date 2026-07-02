@@ -48,8 +48,16 @@ int _unlink(DiskInterface *disk, cache *cache, const char *path, bool write_thro
     char *parent = parent_path(path, count_l(path));
     char *name = get_name(path);
     int rv = directory_remove_entry(disk, cache, parent, name, write_through);
+    InodeBtreePair *pair = item_search(disk, cache, parent);
+    if (btree_search(disk, cache, pair->btree_block, path_hash(name)))
+    {
+    	btree_delete(disk, cache, pair->btree_block, path_hash(name));
+    	btree_write(disk, cache, pair->btree_block);
+    }
+    arc4random_buf(pair, sizeof(struct InodeBtreePair));
     arc4random_buf(parent, sizeof(char)*strlen(parent));
     arc4random_buf(name, sizeof(char)*strlen(name));
+    free(pair);
     free(parent);
     free(name);
     printf("unlink(%s) -> %d\n", path, rv);
@@ -59,18 +67,35 @@ int _unlink(DiskInterface *disk, cache *cache, const char *path, bool write_thro
 int _link(DiskInterface *disk, cache *cache, const char *from, const char *to, bool write_through)
 {
     int rv = -1;
+    InodeBtreePair *pair = item_search(disk, cache, to);
+    char *parent = parent_path(to, count_l(to));
+    char *name = get_name(to);
+    if (pair->inode_number)
+    {
+        free(pair);
+        pair = item_search(disk, cache, parent);
+        btree_write(disk, cache, pair->btree_block);
+        directory_sync_entry(disk, cache, parent, name);
+        arc4random_buf(pair, sizeof(struct InodeBtreePair));
+        arc4random_buf(parent, strlen(parent));
+        arc4random_buf(name, strlen(name));
+        free(pair);
+        free(parent);
+        free(name);
+        return 0;
+    }
+    InodeBtreePair *to_pair = item_search(disk, cache, from);
+    char *to_parent = parent_path(to, count_l(to));
+    char *to_name = get_name(to);
     InodeBtreePair *from_pair = item_search(disk, cache, from);
     Inode from_inode;
     inode_read(disk, cache, from_pair->inode_number, &from_inode);
-    char *to_parent = parent_path(to, count_l(to));
-    char *to_name = get_name(to);
     rv = directory_add_entry(disk, cache, to_parent, to_name, from_pair->inode_number, (FileType) ( from_inode.mode & S_IFMT), write_through);
     if (!rv)
     {
         from_inode.reference_count++;
-        inode_write(disk, cache, &from_inode, write_through);
+        inode_write(disk, cache, &from_inode, true);
     }
-    
     arc4random_buf(from_pair, sizeof(struct InodeBtreePair));
     arc4random_buf(to_parent, sizeof(char)*strlen(to_parent));
     arc4random_buf(to_name, sizeof(char)*strlen(to_name));
@@ -131,6 +156,10 @@ int _set_block(DiskInterface *disk, cache *cache, int64_t inode_number,
 {
     int rv = -1;
     Inode inode;
+    block_type_t *block_type = get_block(disk, cache, inode_number, physical_block);
+    *block_type = BLOCK_TYPE_DATA;
+    write_block(disk, cache, block_type, inode_number, physical_block);
+    disk_write_block(disk, physical_block, block_type);
 
     if (inode_read(disk, cache, inode_number, &inode) != 0) {
         fprintf(stderr, "ERROR: Could not read inode %lld!!\n", inode_number);
@@ -148,7 +177,7 @@ int _set_block(DiskInterface *disk, cache *cache, int64_t inode_number,
         {
             inode.indirect_block = alloc_page(disk, cache);
             if (!inode.indirect_block) return rv;
-            block_type_t *block_type = get_block(disk, cache, inode.inode_number, inode.indirect_block);
+            block_type = get_block(disk, cache, inode.inode_number, inode.indirect_block);
             *block_type = BLOCK_TYPE_DATA;
             inode_write(disk, cache, &inode, true);
             inode_read(disk, cache, inode.inode_number, &inode);
@@ -174,5 +203,15 @@ int _set_block(DiskInterface *disk, cache *cache, int64_t inode_number,
         return -1;
     }
 
+    return rv;
+}
+
+int _rename(DiskInterface *disk, cache *cache, const char *from, const char *to, bool write_through)
+{
+    int rv = -1;
+    rv = _link(disk, cache, from, to, false);
+    if (rv) return rv;
+    rv = _unlink(disk, cache, from, false);
+    printf("rename(%s => %s) -> %d\n", from, to, rv);
     return rv;
 }

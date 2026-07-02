@@ -429,12 +429,12 @@ void btree_update_parent_keys(DiskInterface* disk, cache *cache, BTreeNode* node
 
 int btree_insert(DiskInterface* disk, cache *cache, uint64_t root_block, uint64_t key, uint64_t value, FileType type)
 {
-    uint64_t page;
+	uint64_t page;
 	BTreeNode *node = btree_node_create(disk, cache, true, &page);
 	node->key = key;
 	node->value = value;
-    node->type = type;
-    btree_node_write(disk, cache, node);
+	node->type = type;
+	btree_node_write(disk, cache, node);
 	
 	int target_block = btree_insertion_search(disk, cache, root_block, key);
 	//printf("Target block: %d\n", target_block);
@@ -446,7 +446,7 @@ int btree_insert(DiskInterface* disk, cache *cache, uint64_t root_block, uint64_
 		{
 			target.children[MAX_KEYS]=node->block_number;
 			node->parent=target.block_number;
-            btree_node_write(disk, cache, &target);
+			btree_node_write(disk, cache, &target);
 		} else {
 			if (target.parent != 0) {
 				BTreeNode parent;
@@ -472,7 +472,7 @@ int btree_insert(DiskInterface* disk, cache *cache, uint64_t root_block, uint64_
 	}
 
 	btree_update_parent_keys(disk, cache, &target);
-    btree_node_write(disk, cache, node);
+	btree_node_write(disk, cache, node);
 	arc4random_buf(&target, sizeof(struct BTreeNode));
 	
 	return 0;

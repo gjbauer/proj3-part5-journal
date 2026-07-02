@@ -153,7 +153,7 @@ if ($exit_status eq 0) {
     $files = `ls mnt`;
     ok($files !~ /one\.txt/, "one.txt is not present after re-mount");
 }
-=cut
+
 # Journal only covers metadata, so we have to write the data again
 write_text("two.txt", $msg2);
 $exit_status = system("mv mnt/two.txt mnt/abc.txt") >> 8;
@@ -164,9 +164,7 @@ ok($files =~ /abc\.txt/, "have abc.txt");
 my $msg4 = read_text("abc.txt");
 say "# '$msg2' eq '$msg4'?";
 ok($msg2 eq $msg4, "Read back data after rename.");
-
-#=cut
-
+=cut
 say "#           == Less Basic Tests ==";
 
 system("ln mnt/abc.txt mnt/def.txt");
@@ -195,7 +193,7 @@ unmount();
 $pid = mount();
 
 ok(-d "mnt/foo", "Directory persists after remount");
-
+#=cut
 system("cp mnt/def.txt mnt/foo/abc.txt");
 my $msg7 = read_text("foo/abc.txt");
 say "# '$msg2' eq '$msg7'?";
@@ -268,9 +266,7 @@ mount();
 
 my $mm = `ls mnt/numbers | wc -l`;
 ok($mm == 150, "deleted 150 files");
-
 =cut
-
 unmount();
 
 system("(make clean 2>&1) > /dev/null");

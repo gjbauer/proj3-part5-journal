@@ -167,7 +167,7 @@ nbtrfs_link(const char *from, const char *to)
     strcpy(entry.link.from, from);
     strcpy(entry.link.to, to);
     initialize_journal_entry(disk, cache_s, &entry);
-	return _link(disk, cache_s, from, to, false);
+    return _link(disk, cache_s, from, to, false);
 }
 
 int
@@ -183,10 +183,13 @@ nbtrfs_rmdir(const char *path)
 int
 nbtrfs_rename(const char *from, const char *to)
 {
-    int rv = -1;
-    rv = nbtrfs_link(from, to);
-    if (rv) return rv;
-    rv = nbtrfs_unlink(from);
+    journal_entry_t entry;
+    entry.type = RENAME;
+    entry.synced = false;
+    strcpy(entry.rename.from, from);
+    strcpy(entry.rename.to, to);
+    initialize_journal_entry(disk, cache_s, &entry);
+    int rv = _rename(disk, cache_s, from, to, true);
     printf("rename(%s => %s) -> %d\n", from, to, rv);
     return rv;
 }
@@ -444,6 +447,16 @@ void nbtrfs_destroy(void *private_data)
     printf("Cleanup complete.\n");
 }
 
+void* 
+nbtrfs_init(struct fuse_conn_info *conn)
+{
+    // Request atomic O_TRUNC from the kernel
+    if (conn->capable & FUSE_CAP_ATOMIC_O_TRUNC) {
+        conn->want |= FUSE_CAP_ATOMIC_O_TRUNC;
+    }
+    return NULL;
+}
+
 void
 nbtrfs_init_ops(struct fuse_operations* ops)
 {
@@ -466,6 +479,7 @@ nbtrfs_init_ops(struct fuse_operations* ops)
     ops->utimens  = nbtrfs_utimens;
     ops->ioctl    = nbtrfs_ioctl;
     ops->destroy  = nbtrfs_destroy;
+    ops->init     = nbtrfs_init;
 };
 
 struct fuse_operations nbtrfs_ops;

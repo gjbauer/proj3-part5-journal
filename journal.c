@@ -27,6 +27,9 @@ void initialize_journal_entry(DiskInterface *disk, cache *cache, journal_entry_t
         case WRITE:
             printf("WRITE\n");
             break;
+        case RENAME:
+            printf("RENAME\n");
+            break;
         default:
             printf("INVALID TYPE\n");
             break;
@@ -99,6 +102,10 @@ void sync_entry(DiskInterface *disk, cache *cache, journal_entry_t *entry)
         case WRITE:
             printf("WRITE\n");
             _set_block(disk, cache, entry->write.inode_number, entry->write.block_index, entry->write.physical_block);
+            break;
+        case RENAME:
+            printf("RENAME\n");
+            _rename(disk, cache, entry->rename.from, entry->rename.to, true);
             break;
     }
     entry->synced = true;
