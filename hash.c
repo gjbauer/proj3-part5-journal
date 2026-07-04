@@ -82,7 +82,7 @@ InodeBtreePair * item_search(DiskInterface* disk, cache *cache, const char *path
     fprintf(stderr, "ERROR: Path not found!!\n");
     goto return_pair;
 wipe_token:
-    arc4random_buf(token, sizeof(token));
+    arc4random_buf(token, strlen(token) * sizeof(char));
     free(token);
 return_pair:
     arc4random_buf(&sb, sizeof(struct Superblock));

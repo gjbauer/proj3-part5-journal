@@ -22,6 +22,7 @@ DL_LL *dl_push(DL_LL *list, uint64_t block_number)
     else
     {
         node->dl_index = 1;
+        node->next = NULL;
     }
 	
 	return node;

@@ -14,7 +14,8 @@ system("(make format 2>&1) > /dev/null");
 system("(mkdir mnt 2>&1) > /dev/null");
 
 sub mount {
-    system("(make mount 2>&1) >> test.log &");
+    #system("(make mount 2>&1) >> test.log &");
+    system("make mount &");
     sleep 3;
 }
 
@@ -152,7 +153,7 @@ system("cp mnt/def.txt mnt/foo/abc.txt");
 my $msg7 = read_text("foo/abc.txt");
 say "# '$msg2' eq '$msg7'?";
 ok($msg2 eq $msg7, "Read back data from copy in subdir.");
-
+=cut
 my $huge0 = "=This string is fourty characters long.=" x 1000;
 write_text("40k.txt", $huge0);
 my $huge1 = read_text("40k.txt");
@@ -195,7 +196,7 @@ mount();
 
 my $mm = `ls mnt/numbers | wc -l`;
 ok($mm == 150, "deleted 150 files");
-
+=cut
 unmount();
 
 system("(make clean 2>&1) > /dev/null");

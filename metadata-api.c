@@ -47,7 +47,8 @@ int _unlink(DiskInterface *disk, cache *cache, const char *path, bool write_thro
 {
     char *parent = parent_path(path, count_l(path));
     char *name = get_name(path);
-    int rv = directory_remove_entry(disk, cache, parent, name, write_through);
+    int rv = 0;
+    directory_remove_entry(disk, cache, parent, name, write_through);
     InodeBtreePair *pair = item_search(disk, cache, parent);
     if (btree_search(disk, cache, pair->btree_block, path_hash(name)))
     {
@@ -67,13 +68,11 @@ int _unlink(DiskInterface *disk, cache *cache, const char *path, bool write_thro
 int _link(DiskInterface *disk, cache *cache, const char *from, const char *to, bool write_through)
 {
     int rv = -1;
-    InodeBtreePair *pair = item_search(disk, cache, to);
     char *parent = parent_path(to, count_l(to));
+    InodeBtreePair *pair = item_search(disk, cache, to);
     char *name = get_name(to);
-    if (pair->inode_number)
+    if (btree_search(disk, cache, pair->btree_block, path_hash(name)))
     {
-        free(pair);
-        pair = item_search(disk, cache, parent);
         btree_write(disk, cache, pair->btree_block);
         directory_sync_entry(disk, cache, parent, name);
         arc4random_buf(pair, sizeof(struct InodeBtreePair));
@@ -84,7 +83,6 @@ int _link(DiskInterface *disk, cache *cache, const char *from, const char *to, b
         free(name);
         return 0;
     }
-    InodeBtreePair *to_pair = item_search(disk, cache, from);
     char *to_parent = parent_path(to, count_l(to));
     char *to_name = get_name(to);
     InodeBtreePair *from_pair = item_search(disk, cache, from);
@@ -209,9 +207,18 @@ int _set_block(DiskInterface *disk, cache *cache, int64_t inode_number,
 int _rename(DiskInterface *disk, cache *cache, const char *from, const char *to, bool write_through)
 {
     int rv = -1;
-    rv = _link(disk, cache, from, to, false);
-    if (rv) return rv;
-    rv = _unlink(disk, cache, from, false);
+    char *to_parent = parent_path(to, count_l(to));
+    char *to_name = get_name(to);
+    InodeBtreePair *pair = item_search(disk, cache, to_parent);
+    if (!btree_search(disk, cache, pair->btree_block, path_hash(to_name)))
+    {
+    	rv = _link(disk, cache, from, to, write_through);
+    	if (rv) goto cleanup;
+    	rv = _unlink(disk, cache, from, write_through);
+    } else rv = 0;
+cleanup:
+    arc4random_buf(pair, sizeof(struct InodeBtreePair));
+    free(pair);
     printf("rename(%s => %s) -> %d\n", from, to, rv);
     return rv;
 }

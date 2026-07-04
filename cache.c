@@ -101,8 +101,16 @@ write_block(DiskInterface* disk, cache *cache, void *buf, int64_t inum, uint64_t
     // Actually write the data to the cache
 	memcpy(cache->cache[index].page_data, buf, BLOCK_SIZE);
 	
-	// Mark as dirty since it now differs from disk
-	cache->cache[index].dirty_bit = true;
+	if (!cache->cache[index].dirty_bit) {
+		cache->cache[index].dirty_bit = true;
+		
+		if (*block_type == BLOCK_TYPE_DATA) {
+			dl_insert(cache->dirty_list, inum, pnum);
+		}
+		
+		cache->gdl = gdl_push(cache, index);
+		cache->cache[index].gdl_pos = cache->gdl;
+	}
 	
 	// Add to per-inode dirty list if it's a data block
 	if (*block_type==BLOCK_TYPE_DATA) dl_insert(cache->dirty_list, inum, pnum);

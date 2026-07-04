@@ -1,4 +1,4 @@
-CFLAGS = -g -O0
+CFLAGS = -g -O0 -fsanitize=address
 FUSE_FLAGS = -lfuse -D_FILE_OFFSET_BITS=64
 RM_FILES = my.img mkfs.nbtrfs fuse mnt test.log
 # Cache files are optimized out of compilation for mkfs & for builds with CACHE_DISABLED macro...
