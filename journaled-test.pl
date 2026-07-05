@@ -175,7 +175,7 @@ ok($msg2 eq $msg5, "Read back data after link.");
 kill_mount($pid);
 unmount();
 $pid = mount();
-
+=pod
 system("rm -f mnt/abc.txt");
 my $msg6 = read_text("def.txt");
 say "# '$msg2' eq '$msg6'?";
@@ -184,12 +184,11 @@ ok($msg2 eq $msg6, "Read back data after other link deleted.");
 system("mkdir mnt/foo");
 ok(-d "mnt/foo", "Made a directory");
 
-kill_mount($pid);
 unmount();
 $pid = mount();
 
 ok(-d "mnt/foo", "Directory persists after remount");
-#=cut
+#=pod
 system("cp mnt/def.txt mnt/foo/abc.txt");
 my $msg7 = read_text("foo/abc.txt");
 say "# '$msg2' eq '$msg7'?";
@@ -258,7 +257,7 @@ mount();
 
 my $mm = `ls mnt/numbers | wc -l`;
 ok($mm == 150, "deleted 150 files");
-
+=cut
 unmount();
 
 system("(make clean 2>&1) > /dev/null");

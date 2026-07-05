@@ -430,13 +430,22 @@ nbtrfs_ioctl(const char* path, int cmd, void* arg, struct fuse_file_info* fi,
     return rv;
 }
 
+int nbtrfs_fsync(const char *path, int datasync, struct fuse_file_info *fi)
+{
+	InodeBtreePair *pair = item_search(disk, cache_s, path);
+	cache_fsync(disk, cache_s, pair->inode_number);
+	printf("fsync(%s)\n", path);
+	arc4random_buf(pair, sizeof(struct InodeBtreePair));
+	free(pair);
+}
+
 void nbtrfs_destroy(void *private_data)
 {
     
     printf("Unmounting: Syncing data and cleaning up...\n");
 
-    printf("Syncing journal entries...\n");
-    sync_journal(disk, cache_s);
+    //printf("Syncing journal entries...\n");
+    //sync_journal(disk, cache_s);
 
     printf("Syncing cache...\n");
     cache_sync(disk, cache_s);
@@ -480,6 +489,7 @@ nbtrfs_init_ops(struct fuse_operations* ops)
     ops->ioctl    = nbtrfs_ioctl;
     ops->destroy  = nbtrfs_destroy;
     ops->init     = nbtrfs_init;
+    ops->fsync	  = nbtrfs_fsync;
 };
 
 struct fuse_operations nbtrfs_ops;

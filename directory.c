@@ -25,7 +25,7 @@ int directory_sync_entry(DiskInterface* disk, cache *cache, const char *path, co
     DirEntry *entry;
 
     inode_read(disk, cache, ppair->inode_number, &node);
-    for (uint16_t i=0; i < ( ( UINT16_MAX * sizeof(struct DirEntry) ) / USABLE_BLOCK_SIZE ); i++)
+    for (uint16_t i=0; i < UINT16_MAX; i++)
     {
         block = 0;
         inode_get_block(disk, cache, &node, i, &block);
@@ -69,7 +69,7 @@ int directory_sync_entry(DiskInterface* disk, cache *cache, const char *path, co
             // Subsequent blocks are just entries
             entries_per_block = USABLE_BLOCK_SIZE / sizeof(struct DirEntry);
         }
-        for (uint16_t j=0; j < entries_per_block ; j++)
+        for (uint16_t j=0; j < entries_per_block - 1 ; j++)
         {
             if (!strcmp(entry[j].name, name))
             {
@@ -117,7 +117,7 @@ int directory_add_entry(DiskInterface* disk, cache *cache, const char *path, con
     if (pair->inode_number || !strcmp(path, "/"))
     {
         inode_read(disk, cache, pair->inode_number, &node);
-        for (uint16_t i=0; i < ( ( UINT16_MAX * sizeof(struct DirEntry) ) / USABLE_BLOCK_SIZE ); i++)
+        for (uint16_t i=0; i < UINT16_MAX; i++)
         {
             block = 0;
             inode_get_block(disk, cache, &node, i, &block);
@@ -168,7 +168,7 @@ int directory_add_entry(DiskInterface* disk, cache *cache, const char *path, con
                 // Subsequent blocks are just entries
                 entries_per_block = USABLE_BLOCK_SIZE / sizeof(struct DirEntry);
             }
-            for (uint16_t j=0; j < entries_per_block ; j++)
+            for (uint16_t j=0; j < entries_per_block - 1 ; j++)
             {
                 if (!entry[j].active || count == number_of_entries)
                 {
@@ -250,16 +250,12 @@ int directory_remove_entry(DiskInterface* disk, cache *cache, const char *path, 
     DirectoryBlock *db;
     DirEntry *entry;
     
-    char absolute[PATH_MAX];
-    snprintf(absolute, PATH_MAX, "%s\%s", path, name);
-    InodeBtreePair *file_to_remove = item_search(disk, cache, path);
-    
     uint16_t count = 0;
     
     if (pair->inode_number || !strcmp(path, "/"))
     {
         inode_read(disk, cache, pair->inode_number, &dir_node);
-        for (uint16_t i=0; i < ( ( UINT16_MAX * sizeof(struct DirEntry) ) / USABLE_BLOCK_SIZE ); i++)
+        for (uint16_t i=0; i < UINT16_MAX; i++)
         {
             block = 0;
             inode_get_block(disk, cache, &dir_node, i, &block);
@@ -280,36 +276,24 @@ int directory_remove_entry(DiskInterface* disk, cache *cache, const char *path, 
             else entry = (DirEntry*) ( block_type + 1 );
             if (number_of_entries == count) break;
             uint16_t entries_per_block = (USABLE_BLOCK_SIZE - sizeof(struct DirectoryBlock)) / sizeof(struct DirEntry);
-            for (uint16_t j=0; j < entries_per_block ; j++)
+            for (uint16_t j=0; j < entries_per_block - 1 ; j++)
             {
                 if (!strcmp(entry->name, name))
                 {
                     entry->active = false;
                     number_of_entries--;
                     inode_read(disk, cache, entry->inode_number, &file_node);
-                    
                     if (1 == file_node.reference_count)
                     {
-                    	file_node.reference_count = 0;
-                        inode_write(disk, cache, &file_node, true);
-                        
-                        btree_delete(disk, cache, pair->btree_block, path_hash(name));
-                        btree_print(disk, cache, pair->btree_block, 0);
-                        
-                        btree_write(disk, cache, pair->btree_block);
-                        
-                        inode_free(disk, cache, entry->inode_number, write_through);
+                        if (inode_free(disk, cache, entry->inode_number, write_through))
+                            goto free_pair;
+                        uint64_t tree_node_block = btree_search(disk, cache, pair->btree_block, path_hash(name));
+                        if (tree_node_block) btree_delete(disk, cache, pair->btree_block, path_hash(name));
+                        btree_print(disk, cache, pair->btree_block , 0);
+                        if (write_through)
+                        	btree_write(disk, cache, pair->btree_block);
                     }
-                    if (write_through)
-                    {
-                        disk_write_block(disk, block, block_type);
-                        decrease_pin_count(disk, cache, pair->inode_number, block);
-                    }
-                    else
-                    {
-                        write_block(disk, cache, block_type, 0, block);
-                        increase_pin_count(disk, cache, pair->inode_number, block);
-                    }
+                    disk_write_block(disk, block, block_type);
                     inode_get_block(disk, cache, &dir_node, 0, &block);
                     block_type = get_block(disk, cache, pair->inode_number, block);
                     db = (DirectoryBlock*) ( block_type + 1 );
@@ -337,12 +321,14 @@ free_pair:
     free(pair);
     return rv;
 }
+
 int directory_list(DiskInterface* disk, cache *cache, const char *path, DirEntry** entries)
 {
     int rv = 0;
     InodeBtreePair *pair = item_search(disk, cache, path);
     Inode node = {0};
     uint64_t block;
+    int16_t number_of_entries;
     block_type_t *block_type;
     DirectoryBlock *db;
     DirEntry *entry;
@@ -350,7 +336,7 @@ int directory_list(DiskInterface* disk, cache *cache, const char *path, DirEntry
     if (pair->inode_number || !strcmp(path, "/"))
     {
         inode_read(disk, cache, pair->inode_number, &node);
-        for (uint16_t i=0; i < ( ( UINT16_MAX * sizeof(struct DirEntry) ) / USABLE_BLOCK_SIZE ); i++)
+        for (uint16_t i=0; i < UINT16_MAX; i++)
         {
             inode_get_block(disk, cache, &node, i, &block);
             printf("Getting block number: %llu\n", block);
@@ -367,13 +353,13 @@ int directory_list(DiskInterface* disk, cache *cache, const char *path, DirEntry
                 db = (DirectoryBlock*) ( block_type + 1 );
                 *entries = malloc( db->entry_count * sizeof(struct DirEntry) );
                 entry = (DirEntry*) ( db + 1 );
+                number_of_entries = db->entry_count;
             }
             else entry = (DirEntry*) ( block_type + 1 );
             if (db->entry_count == rv) break;
             uint16_t entries_per_block = USABLE_BLOCK_SIZE / sizeof(struct DirEntry);
             for (uint16_t j=0; j < entries_per_block && rv < db->entry_count; j++, entry++)
             {
-                if (rv == db->entry_count) break;
                 if (entry->active)
                 {
                     memcpy( &(*entries)[rv], entry, sizeof(struct DirEntry) );
@@ -388,6 +374,61 @@ int directory_list(DiskInterface* disk, cache *cache, const char *path, DirEntry
         printf("  entry %d: name='%s', inode=%llu, active=%d\n",
                i, (*entries)[i].name, (*entries)[i].inode_number, (*entries)[i].active);
     }
+    arc4random_buf(pair, sizeof(struct InodeBtreePair));
+    free(pair);
+    return rv;
+}
+
+bool directory_exists_entry(DiskInterface* disk, cache *cache, const char *path, const char* name)
+{
+    bool rv = false;
+    InodeBtreePair *pair = item_search(disk, cache, path);
+    Inode dir_node = {0};
+    uint64_t block;
+    int16_t number_of_entries;
+    block_type_t *block_type;
+    DirectoryBlock *db;
+    DirEntry *entry;
+    
+    uint16_t count = 0;
+    
+    if (pair->inode_number || !strcmp(path, "/"))
+    {
+        inode_read(disk, cache, pair->inode_number, &dir_node);
+        for (uint16_t i=0; i < UINT16_MAX; i++)
+        {
+            block = 0;
+            inode_get_block(disk, cache, &dir_node, i, &block);
+            if (!block)
+                goto free_pair;
+            block_type = get_block(disk, cache, pair->inode_number, block);
+            if (BLOCK_TYPE_DATA != *block_type)
+            {
+                fprintf(stderr, "ERROR: Not a data type block!!\n");
+                goto free_pair;
+            }
+            if (0 == i)
+            {
+                db = (DirectoryBlock*) ( block_type + 1 );
+                entry = (DirEntry*) ( db + 1 );
+                number_of_entries = db->entry_count;
+            }
+            else entry = (DirEntry*) ( block_type + 1 );
+            if (number_of_entries == count) break;
+            uint16_t entries_per_block = (USABLE_BLOCK_SIZE - sizeof(struct DirectoryBlock)) / sizeof(struct DirEntry);
+            for (uint16_t j=0; j < entries_per_block - 1 ; j++)
+            {
+                if (!strcmp(entry->name, name) && entry->active)
+                {
+                    rv = true;
+                    goto free_pair;
+                }
+                entry++;
+                if (entry->active) count++;
+            }
+        }
+    }
+free_pair:
     arc4random_buf(pair, sizeof(struct InodeBtreePair));
     free(pair);
     return rv;

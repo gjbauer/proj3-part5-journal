@@ -77,6 +77,8 @@ InodeBtreePair * item_search(DiskInterface* disk, cache *cache, const char *path
             }
         }
         else goto wipe_token;
+        arc4random_buf(token, strlen(token) * sizeof(char));
+	free(token);
     }
     
     fprintf(stderr, "ERROR: Path not found!!\n");

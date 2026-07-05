@@ -39,7 +39,7 @@ int64_t lru_pop(cache *cache, LRU_List **list)
     int64_t index;
     LRU_List *node_to_remove;
     
-    if (*list == NULL) {
+    if (list == NULL || *list == NULL) {
         return -1;  // Invalid node
     }
     
@@ -51,19 +51,22 @@ int64_t lru_pop(cache *cache, LRU_List **list)
     if (cache->lru_size == 1) {
         // Only one node in the list
         cache->lru = NULL;
-        *list = NULL;
+        *list = NULL;  // Update the caller's pointer
     } else {
+        // Save the next node before removal
+        LRU_List *next_node = node_to_remove->next;
+        
         // Remove this node from the circular list
-        node_to_remove->prev->next = node_to_remove->next;
-        node_to_remove->next->prev = node_to_remove->prev;
+        node_to_remove->prev->next = next_node;
+        next_node->prev = node_to_remove->prev;
         
-        // If we're removing the head, update cache->lru to the next node
+        // Update the caller's pointer to the next node
+        *list = next_node;
+        
+        // If we're removing the head, update cache->lru
         if (node_to_remove == cache->lru) {
-            cache->lru = node_to_remove->next;
+            cache->lru = next_node;
         }
-        
-        // Update the caller's pointer to NULL since we're removing this node
-        *list = NULL;
     }
     
     // Securely overwrite node data before freeing

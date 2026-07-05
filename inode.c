@@ -135,13 +135,20 @@ int inode_free(DiskInterface* disk, cache *cache, uint64_t inode_number, bool wr
     int rv = -1;
     Superblock sb;
     superblock_read(disk, cache, &sb);
-    int ibmn = sb.inode_bitmap + (inode_number / USABLE_BLOCK_SIZE);
-	void* ibm = get_block(disk, cache, 0, ibmn );
-	if (bitmap_put(ibm, inode_number - ((ibmn - 1) * USABLE_BLOCK_SIZE), 0))  // Mark block as free
-	{
-		fprintf(stderr, "ERROR: Selected block could not be freed!\n");
+    
+    // Calculate which bitmap block and bit offset
+    uint64_t bitmap_start = sb.inode_bitmap;
+    uint64_t bitmap_block_index = inode_number / USABLE_BLOCK_SIZE;  // Which bitmap block
+    uint64_t bit_offset_in_block = inode_number % USABLE_BLOCK_SIZE; // Which bit within the block
+    
+    uint64_t ibmn = bitmap_start + bitmap_block_index;
+    void* ibm = get_block(disk, cache, 0, ibmn);
+    
+    if (bitmap_put(ibm, bit_offset_in_block, 0))  // Mark bit as free
+    {
+        fprintf(stderr, "ERROR: Selected inode could not be freed!\n");
         goto return_rv;
-	}
+    }
     // Securely erase inode contents
     int inode_per_page = USABLE_BLOCK_SIZE / sizeof(Inode);
     int inode_page = inode_number / inode_per_page;
