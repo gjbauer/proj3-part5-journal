@@ -3,7 +3,7 @@
 #include "directory.h"
 #include "hash.h"
 
-int _mknod(DiskInterface *disk, cache *cache, const char *path, mode_t mode, bool write_through)
+int _mknod(DiskInterface *disk, cache *cache, const char *path, mode_t mode, uint64_t btree_block, bool write_through)
 {
     int rv = -1;
     char *parent = parent_path(path, count_l(path));
@@ -16,8 +16,25 @@ int _mknod(DiskInterface *disk, cache *cache, const char *path, mode_t mode, boo
     
     if (exists)
     {
-    	rv = 0;
-    	goto print;
+    	if (!btree_search(disk, cache, pair->btree_block, path_hash(name)))
+    	{
+    		if ( FILE_TYPE_DIRECTORY == ( mode & S_IFMT) )
+    		{
+    		    btree_insert(disk, cache, pair->btree_block, path_hash(name), btree_block, ( mode & S_IFMT));
+    		}
+    		else
+    		{
+    		    btree_insert(disk, cache, pair->btree_block, path_hash(name), stack_entry.inode_number, ( mode & S_IFMT));
+    		}
+    	}
+    	btree_write(disk, cache, pair->btree_block);
+        arc4random_buf(pair, sizeof(struct InodeBtreePair));
+        arc4random_buf(parent, strlen(parent));
+        arc4random_buf(name, strlen(name));
+        free(pair);
+        free(parent);
+        free(name);
+        return 0;
     }
     rv = inode_allocate(disk, cache, mode, write_through);
     if (-1 == rv) goto print;

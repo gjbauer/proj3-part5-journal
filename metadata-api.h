@@ -15,7 +15,7 @@
 #include "string.h"
 #include <stdint.h>
 
-int _mknod(DiskInterface *disk, cache *cache, const char *path, mode_t mode, bool write_through);
+int _mknod(DiskInterface *disk, cache *cache, const char *path, mode_t mode, uint64_t btree_block, bool write_through);
 
 int _unlink(DiskInterface *disk, cache *cache, const char *path, bool write_through);
 
