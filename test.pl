@@ -15,6 +15,7 @@ system("(mkdir mnt 2>&1) > /dev/null");
 
 sub mount {
     system("(make mount 2>&1) >> test.log &");
+    #system("make mount &");
     sleep 3;
 }
 

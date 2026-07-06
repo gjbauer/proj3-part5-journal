@@ -88,6 +88,8 @@ uint64_t btree_search(DiskInterface* disk, cache *cache, uint64_t root_block, ui
  */
 int btree_insert(DiskInterface* disk, cache *cache, uint64_t root_block, uint64_t key, uint64_t value, FileType type);
 
+int btree_insert_nocreate(DiskInterface* disk, cache *cache, uint64_t root_block, uint64_t key, uint64_t value, FileType type, BTreeNode *node);
+
 /**
  * Delete a key from the B-tree
  * @param disk Pointer to DiskInterface

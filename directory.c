@@ -75,13 +75,11 @@ int directory_sync_entry(DiskInterface* disk, cache *cache, const char *path, co
             {
                 number_of_entries++;
                 disk_write_block(disk, block, block_type);
-                decrease_pin_count(disk, cache, pair->inode_number, block);
                 inode_get_block(disk, cache, &node, 0, &block);
                 block_type = get_block(disk, cache, ppair->inode_number, block);
                 db = (DirectoryBlock*) ( block_type + 1 );
                 db->entry_count = number_of_entries;
                 disk_write_block(disk, block, block_type);
-                decrease_pin_count(disk, cache, pair->inode_number, block);
                 write_block(disk, cache, block_type, 0, block);
                 rv = 0;
                 goto free_pairs;
@@ -201,31 +199,14 @@ int directory_add_entry(DiskInterface* disk, cache *cache, const char *path, con
                         }
                     }
                     memcpy( &entry[j], &new_file, sizeof(struct DirEntry) );
-                    if (write_through)
-                    {
-                        disk_write_block(disk, block, block_type);
-                        decrease_pin_count(disk, cache, target_inode, block);
-                    }
-                    else
-                    {
-                        write_block(disk, cache, block_type, 0, block);
-                        increase_pin_count(disk, cache, target_inode, block);
-                    }
+                    disk_write_block(disk, block, block_type);
                     inode_get_block(disk, cache, &node, 0, &block);
                     block_type = get_block(disk, cache, pair->inode_number, block);
                     db = (DirectoryBlock*) ( block_type + 1 );
                     db->entry_count = number_of_entries;
-                    if (write_through)
-                    {
-                        disk_write_block(disk, block, block_type);
-                        decrease_pin_count(disk, cache, target_inode, block);
-                    }
-                    else
-                    {
-                        write_block(disk, cache, block_type, 0, block);
-                        increase_pin_count(disk, cache, target_inode, block);
-                    }
+                    disk_write_block(disk, block, block_type);
                     write_block(disk, cache, block_type, 0, block);
+                    btree_write(disk, cache, pair->btree_block);
                     rv = 0;
                     goto free_pair;
                 }
@@ -288,7 +269,11 @@ int directory_remove_entry(DiskInterface* disk, cache *cache, const char *path, 
                         if (inode_free(disk, cache, entry->inode_number, write_through))
                             goto free_pair;
                         uint64_t tree_node_block = btree_search(disk, cache, pair->btree_block, path_hash(name));
-                        if (tree_node_block) btree_delete(disk, cache, pair->btree_block, path_hash(name));
+                        if (tree_node_block)
+                        {
+                        	btree_delete(disk, cache, pair->btree_block, path_hash(name));
+                        	btree_write(disk, cache, pair->btree_block);
+                        }
                         btree_print(disk, cache, pair->btree_block , 0);
                         if (write_through)
                         	btree_write(disk, cache, pair->btree_block);
@@ -379,7 +364,7 @@ int directory_list(DiskInterface* disk, cache *cache, const char *path, DirEntry
     return rv;
 }
 
-bool directory_exists_entry(DiskInterface* disk, cache *cache, const char *path, const char* name)
+bool directory_exists_entry(DiskInterface* disk, cache *cache, const char *path, const char* name, DirEntry *stack_entry)
 {
     bool rv = false;
     InodeBtreePair *pair = item_search(disk, cache, path);
@@ -420,6 +405,7 @@ bool directory_exists_entry(DiskInterface* disk, cache *cache, const char *path,
             {
                 if (!strcmp(entry->name, name) && entry->active)
                 {
+                    if (stack_entry != NULL) memcpy(stack_entry, entry, sizeof(struct DirEntry));
                     rv = true;
                     goto free_pair;
                 }

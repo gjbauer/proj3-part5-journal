@@ -3,37 +3,35 @@
 #include "directory.h"
 #include "hash.h"
 
-int _mknod(DiskInterface *disk, cache *cache, const char *path, mode_t mode, bool write_through)
+int _mknod(DiskInterface *disk, cache *cache, const char *path, mode_t mode, uint64_t btree_block, bool write_through)
 {
-    InodeBtreePair *pair = item_search(disk, cache, path);
+    int rv = -1;
     char *parent = parent_path(path, count_l(path));
     char *name = get_name(path);
-    if (directory_exists_entry(disk, cache, parent, name))
-    {
-    	printf("entry exists\n");
-        arc4random_buf(pair, sizeof(struct InodeBtreePair));
-        arc4random_buf(parent, strlen(parent));
-        arc4random_buf(name, strlen(name));
-        free(pair);
-        free(parent);
-        free(name);
-        return 0;
-    }
+    DirEntry stack_entry;
     Inode node;
-    int rv = inode_allocate(disk, cache, mode, write_through);
+    bool exists = directory_exists_entry(disk, cache, parent, name, &stack_entry);
+    
+    InodeBtreePair *pair = item_search(disk, cache, parent);
+    
+    if (exists)
+    {
+    	rv = 0;
+    	goto print;
+    }
+    rv = inode_allocate(disk, cache, mode, write_through);
     if (-1 == rv) goto print;
     rv = inode_read(disk, cache, rv, &node);
     if (rv) goto print;
     node.creation_time = time(NULL);
+    node.mode = mode;
     rv = inode_write(disk, cache, &node, write_through);
     if (rv) goto print;
-    rv = directory_add_entry(disk, cache, parent, name, node.inode_number, ( mode & S_IFMT), write_through);
+    rv = directory_add_entry(disk, cache, parent, name, node.inode_number, ( mode & S_IFMT), true);
 print:
     arc4random_buf(&node, sizeof(struct Inode));
-    arc4random_buf(pair, sizeof(struct InodeBtreePair));
     arc4random_buf(parent, sizeof(strlen(parent)));
     arc4random_buf(name, sizeof(char)*strlen(name));
-    free(pair);
     free(parent);
     free(name);
     printf("mknod(%s, %04o) -> %d\n", path, mode, rv);
@@ -45,14 +43,12 @@ int _unlink(DiskInterface *disk, cache *cache, const char *path, bool write_thro
     int rv = 0;
     char *parent = parent_path(path, count_l(path));
     char *name = get_name(path);
-    
-    if (directory_exists_entry(disk, cache, parent, name))
-    {
-        directory_remove_entry(disk, cache, parent, name, false);
-    }
-    
     InodeBtreePair *pair = item_search(disk, cache, parent);
     
+    if (directory_exists_entry(disk, cache, parent, name, NULL))
+    {
+        directory_remove_entry(disk, cache, parent, name, write_through);
+    }
     if (btree_search(disk, cache, pair->btree_block, path_hash(name)))
     {
     	btree_delete(disk, cache, pair->btree_block, path_hash(name));
@@ -76,9 +72,21 @@ int _link(DiskInterface *disk, cache *cache, const char *from, const char *to, b
     inode_read(disk, cache, from_pair->inode_number, &from_inode);
     char *parent = parent_path(to, count_l(to));
     char *name = get_name(to);
-    if (directory_exists_entry(disk, cache, parent, name))
+    
+    InodeBtreePair *pair = item_search(disk, cache, parent);
+    DirEntry stack_entry;
+    Inode stack_node;
+    
+    if (directory_exists_entry(disk, cache, parent, name, &stack_entry))
     {
-    	printf("entry exists\n");
+    	rv = inode_read(disk, cache, stack_entry.inode_number, &stack_node);
+    	if (!btree_search(disk, cache, pair->btree_block, path_hash(name)))
+    	{
+    		btree_insert(disk, cache, pair->btree_block, path_hash(name), stack_entry.inode_number, ( stack_node.mode & S_IFMT));
+    	}
+    	btree_write(disk, cache, pair->btree_block);
+    	arc4random_buf(pair, sizeof(struct InodeBtreePair));
+        free(pair);
     	arc4random_buf(from_pair, sizeof(struct InodeBtreePair));
         free(from_pair);
         arc4random_buf(&from_inode, sizeof(struct Inode));
@@ -96,6 +104,8 @@ int _link(DiskInterface *disk, cache *cache, const char *from, const char *to, b
         from_inode.reference_count++;
         inode_write(disk, cache, &from_inode, true);
     }
+    arc4random_buf(pair, sizeof(struct InodeBtreePair));
+    free(pair);
     arc4random_buf(&from_inode, sizeof(struct Inode));
     arc4random_buf(parent, strlen(parent));
     arc4random_buf(name, strlen(name));
@@ -151,6 +161,10 @@ int _truncate(DiskInterface *disk, cache *cache, const char *path, off_t size, b
 
     inode.size = size;
     inode_write(disk, cache, &inode, write_through);
+    
+    arc4random_buf(&inode, sizeof(struct Inode));
+    arc4random_buf(pair, sizeof(struct InodeBtreePair));
+    free(pair);
     // TODO: Free empty indirect and double-indirect blocks when empty
     printf("truncate(%s, %lld bytes) -> %d\n", path, size, rv);
     return rv;
@@ -170,6 +184,10 @@ int _set_block(DiskInterface *disk, cache *cache, int64_t inode_number,
     if (block_index < 12)
     {
         inode.direct_blocks[block_index] = physical_block;
+        block_type_t *block_type = get_block(disk, cache, inode.inode_number, physical_block);
+        *block_type = BLOCK_TYPE_DATA;
+        write_block(disk, cache, block_type, inode.inode_number, physical_block);
+        disk_write_block(disk, physical_block, block_type);
         rv = 0;
     }
     else if (block_index <= ( USABLE_BLOCK_SIZE / sizeof(uint64_t) ) )

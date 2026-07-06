@@ -11,6 +11,13 @@ void initialize_journal_entry(DiskInterface *disk, cache *cache, journal_entry_t
     {
         case MKNOD:
             printf("MKNOD\n");
+            /*if ( FILE_TYPE_DIRECTORY == ( entry->mknod.mode & S_IFMT) )
+            {
+            	InodeBtreePair *pair = item_search(disk, cache, entry->mknod.path);
+            	entry->mknod.btree_block = pair->btree_block;
+            	arc4random_buf(pair, sizeof(struct InodeBtreePair));
+            	free(pair);
+            }*/
             break;
         case UNLINK:
             printf("UNLINK\n");
@@ -77,11 +84,23 @@ void sync_entry(DiskInterface *disk, cache *cache, journal_entry_t *entry)
     switch (entry->type)
     {
         case UNINITIALIZED:
-            printf("UNITIALIZED\n");
+            printf("UNINITIALIZED\n");
             break;
         case MKNOD:
             printf("MKNOD\n");
-            _mknod(disk, cache, entry->mknod.path, entry->mknod.mode, true);
+            _mknod(disk, cache, entry->mknod.path, entry->mknod.mode, entry->mknod.btree_block, true);
+            Inode node;
+            InodeBtreePair *pair = item_search(disk, cache, entry->mknod.path);
+            inode_read(disk, cache, pair->inode_number, &node);
+            node.creation_time = time(NULL);
+    	    node.mode = entry->mknod.mode;
+    	    inode_write(disk, cache, &node, true);
+    	    arc4random_buf(pair, sizeof(struct InodeBtreePair));
+            free(pair);
+            if ( FILE_TYPE_DIRECTORY == ( entry->mknod.mode & S_IFMT) )
+            {
+            	_truncate(disk, cache, entry->mknod.path, 0, true);
+            }
             break;
         case UNLINK:
             printf("UNLINK\n");

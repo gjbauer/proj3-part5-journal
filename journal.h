@@ -34,6 +34,7 @@ typedef struct journal_entry_t
         {
             char path[PATH_MAX];
             mode_t mode;
+            uint64_t btree_block;
         } mknod;
         struct
         {

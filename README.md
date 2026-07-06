@@ -70,7 +70,10 @@ The current version of the filesystem passes all of the tests on macOS, Arch Lin
 macOS:
 ![](screen.png)
 Ubuntu ARM64:
+ - Safe Conditions
 ![](screen-ubuntu.png)
+ - Crash Recovery
+![](screen1-ubuntu.png)
 
 ### Journaling Tests
 The current version of the filesystem fails all of the expected tests on the journaled test suite as the journal is not yet implemented. Similar to the previous test suite, it has only been tested on macOS, but I will go on to test on Arch Linux and FreeBSD after the journal has been finished being implemented.

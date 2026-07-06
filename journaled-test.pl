@@ -172,10 +172,6 @@ my $msg5 = read_text("def.txt");
 say "# '$msg2' eq '$msg5'?";
 ok($msg2 eq $msg5, "Read back data after link.");
 
-kill_mount($pid);
-unmount();
-$pid = mount();
-=pod
 system("rm -f mnt/abc.txt");
 my $msg6 = read_text("def.txt");
 say "# '$msg2' eq '$msg6'?";
@@ -184,11 +180,12 @@ ok($msg2 eq $msg6, "Read back data after other link deleted.");
 system("mkdir mnt/foo");
 ok(-d "mnt/foo", "Made a directory");
 
+kill_mount($pid);
 unmount();
 $pid = mount();
 
 ok(-d "mnt/foo", "Directory persists after remount");
-#=pod
+
 system("cp mnt/def.txt mnt/foo/abc.txt");
 my $msg7 = read_text("foo/abc.txt");
 say "# '$msg2' eq '$msg7'?";
@@ -203,7 +200,7 @@ ok($huge0 eq $huge1, "Read back 40k correctly.");
 my $huge2 = read_text_slice("40k.txt", 10, 8050);
 $right = "ng is four";
 ok($huge2 eq $right, "Read with offset & length");
-
+#=pod
 system("mkdir -p mnt/dir1/dir2/dir3/dir4/dir5");
 my $hi0 = "hello there";
 write_text("dir1/dir2/dir3/dir4/dir5/hello.txt", $hi0);
@@ -257,7 +254,7 @@ mount();
 
 my $mm = `ls mnt/numbers | wc -l`;
 ok($mm == 150, "deleted 150 files");
-=cut
+
 unmount();
 
 system("(make clean 2>&1) > /dev/null");

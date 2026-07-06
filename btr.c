@@ -88,6 +88,7 @@ void btree_node_free(DiskInterface* disk, cache *cache, uint64_t block)
  */
 int btree_node_read(DiskInterface* disk, cache *cache, uint64_t block_num, BTreeNode* node)
 {
+	//printf("Reading B-Tree block %llu\n", block_num);
 	block_type_t *block_type = (block_type_t*) get_block(disk, cache, 0, block_num);
 	if (*block_type != BLOCK_TYPE_BTREE_NODE)
 	{
@@ -435,6 +436,52 @@ int btree_insert(DiskInterface* disk, cache *cache, uint64_t root_block, uint64_
 	node->value = value;
 	node->type = type;
 	btree_node_write(disk, cache, node);
+	
+	int target_block = btree_insertion_search(disk, cache, root_block, key);
+	//printf("Target block: %d\n", target_block);
+	BTreeNode target;
+	btree_node_read(disk, cache, target_block, &target);
+	
+	if (target.num_keys == MAX_KEYS) {
+		if (target.keys[MAX_KEYS - 1] < key && target.children[MAX_KEYS]==0)
+		{
+			target.children[MAX_KEYS]=node->block_number;
+			node->parent=target.block_number;
+			btree_node_write(disk, cache, &target);
+		} else {
+			if (target.parent != 0) {
+				BTreeNode parent;
+				btree_node_read(disk, cache, target.parent, &parent);
+				int i;
+				for(i=0; i<MAX_KEYS && parent.keys[i] < btree_find_maximum(disk, cache, target.block_number) && parent.keys[i]!=0; i++);
+				btree_split_child(disk, cache, &parent, i, &target);
+				target_block = btree_insertion_search(disk, cache, root_block, key);
+				btree_node_read(disk, cache, target_block, &target);
+			} else {
+				btree_split_root(disk, cache, &target);
+				target_block = btree_insertion_search(disk, cache, root_block, key);
+				btree_node_read(disk, cache, target_block, &target);
+			}
+			btree_insert_nonfull(disk, cache, &target, node);
+			btree_node_write(disk, cache, &target);
+		}
+	}
+	else
+	{
+		btree_insert_nonfull(disk, cache, &target, node);
+		btree_node_write(disk, cache, &target);
+	}
+
+	btree_update_parent_keys(disk, cache, &target);
+	btree_node_write(disk, cache, node);
+	arc4random_buf(&target, sizeof(struct BTreeNode));
+	
+	return 0;
+}
+
+int btree_insert_nocreate(DiskInterface* disk, cache *cache, uint64_t root_block, uint64_t key, uint64_t value, FileType type, BTreeNode *node)
+{
+	uint64_t page;
 	
 	int target_block = btree_insertion_search(disk, cache, root_block, key);
 	//printf("Target block: %d\n", target_block);

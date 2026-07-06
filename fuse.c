@@ -120,13 +120,15 @@ nbtrfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 int
 nbtrfs_mknod(const char *path, mode_t mode, dev_t rdev)
 {
+    int rv = -1;
     journal_entry_t entry;
     entry.type = MKNOD;
     entry.synced = false;
     strcpy(entry.mknod.path, path);
     entry.mknod.mode = mode;
+    rv = _mknod(disk, cache_s, path, mode, 0, false);
     initialize_journal_entry(disk, cache_s, &entry);
-    return _mknod(disk, cache_s, path, mode, false);
+    return rv;
 }
 
 int
@@ -189,7 +191,7 @@ nbtrfs_rename(const char *from, const char *to)
     strcpy(entry.rename.from, from);
     strcpy(entry.rename.to, to);
     initialize_journal_entry(disk, cache_s, &entry);
-    int rv = _rename(disk, cache_s, from, to, true);
+    int rv = _rename(disk, cache_s, from, to, false);
     printf("rename(%s => %s) -> %d\n", from, to, rv);
     return rv;
 }
