@@ -126,7 +126,7 @@ nbtrfs_mknod(const char *path, mode_t mode, dev_t rdev)
     entry.synced = false;
     strcpy(entry.mknod.path, path);
     entry.mknod.mode = mode;
-    rv = _mknod(disk, cache_s, path, mode, 0, false);
+    rv = _mknod(disk, cache_s, path, mode, false);
     initialize_journal_entry(disk, cache_s, &entry);
     return rv;
 }

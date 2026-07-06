@@ -3,7 +3,7 @@
 #include "directory.h"
 #include "hash.h"
 
-int _mknod(DiskInterface *disk, cache *cache, const char *path, mode_t mode, uint64_t btree_block, bool write_through)
+int _mknod(DiskInterface *disk, cache *cache, const char *path, mode_t mode, bool write_through)
 {
     int rv = -1;
     char *parent = parent_path(path, count_l(path));

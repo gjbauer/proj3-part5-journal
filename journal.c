@@ -11,13 +11,6 @@ void initialize_journal_entry(DiskInterface *disk, cache *cache, journal_entry_t
     {
         case MKNOD:
             printf("MKNOD\n");
-            /*if ( FILE_TYPE_DIRECTORY == ( entry->mknod.mode & S_IFMT) )
-            {
-            	InodeBtreePair *pair = item_search(disk, cache, entry->mknod.path);
-            	entry->mknod.btree_block = pair->btree_block;
-            	arc4random_buf(pair, sizeof(struct InodeBtreePair));
-            	free(pair);
-            }*/
             break;
         case UNLINK:
             printf("UNLINK\n");

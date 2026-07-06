@@ -9,6 +9,7 @@
     - [Testing](#Testing)
       - [Safe Condition](#Safe-Condition-Tests)
       - [Crash Recovery](#Journaling-Tests)
+ - [Known Issues and Missing Features](#Known-Issues-and-Missing-Features)
 
 
 ## High-Performance Block Cache
@@ -70,14 +71,23 @@ The current version of the filesystem passes all of the tests on macOS, Arch Lin
 macOS:
 ![](screen.png)
 Ubuntu ARM64:
- - Safe Conditions
 ![](screen-ubuntu.png)
- - Crash Recovery
-![](screen1-ubuntu.png)
 
 ### Journaling Tests
-The current version of the filesystem fails all of the expected tests on the journaled test suite as the journal is not yet implemented. Similar to the previous test suite, it has only been tested on macOS, but I will go on to test on Arch Linux and FreeBSD after the journal has been finished being implemented.
+The current state of the journal is still not entirely stable, and fails 5 out of 55 tests.
 
 macOS:
+ - MACOS IS OUT OF DATE
 ![](screen1.png)
+Ubuntu ARM64:
+![](screen1-ubuntu.png)
+
+## Known Issues and Missing Features
+
+The remaining issues are all related to the journal and the remaining 5 tests that needs to be made to pass without causing regressions for the safe conditions.
+
+There are three pressing missing features:
+	- Double Indirect Blocks
+	- Truncate Freeing Indirect and Double Indirect Parent Blocks
+	- Multihtreading
 
