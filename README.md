@@ -87,7 +87,8 @@ Ubuntu ARM64:
 The remaining issues are all related to the journal and the remaining 5 tests that needs to be made to pass without causing regressions for the safe conditions.
 
 There are three pressing missing features:
-	- Double Indirect Blocks
-	- Truncate Freeing Indirect and Double Indirect Parent Blocks
-	- Multihtreading
+
+ - Double Indirect Blocks
+ - Truncate Freeing Indirect and Double Indirect Parent Blocks
+ - Multihtreading
 
