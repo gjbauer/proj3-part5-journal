@@ -7,7 +7,7 @@
 #include <stdint.h>
 
 #undef PATH_MAX
-#define PATH_MAX 2026
+#define PATH_MAX 2030
 #undef NAME_MAX
 #define NAME_MAX 256
 
@@ -45,7 +45,6 @@ typedef struct journal_entry_t
         {
             char from[PATH_MAX];
             char to[PATH_MAX];
-            int64_t inode_number;
         } link;
         struct
         {
