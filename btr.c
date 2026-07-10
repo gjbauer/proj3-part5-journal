@@ -967,7 +967,7 @@ void btree_print(DiskInterface* disk, cache *cache, uint64_t root_block, int lev
 	
 	if (node.is_leaf) {
 		// Print leaf node information
-		printf("LEAF key=%llu parent=%llu\n", node.key, node.parent);
+		printf("LEAF key=%llu parent=%llu value=%llu\n", node.key, node.parent, node.value);
 	} else {
 		// Print internal node information
 		printf("INTERNAL keys=[");

@@ -13,10 +13,12 @@ void initialize_journal_entry(DiskInterface *disk, cache *cache, journal_entry_t
             printf("MKNOD\n");
             if ( FILE_TYPE_DIRECTORY == ( entry->mknod.mode & S_IFMT) )
             {
-            	InodeBtreePair *pair = item_search(disk, cache, entry->mknod.path);
-            	entry->mknod.btree_block = pair->btree_block;
-            	arc4random_buf(pair, sizeof(struct InodeBtreePair));
-            	free(pair);
+                // For directories, find the inode number from the path
+                InodeBtreePair *pair = item_search(disk, cache, entry->mknod.path);
+                entry->mknod.inode_number = pair->inode_number;
+                entry->mknod.btree_block = pair->btree_block;
+                arc4random_buf(pair, sizeof(struct InodeBtreePair));
+                free(pair);
             }
             break;
         case UNLINK:
@@ -88,15 +90,15 @@ void sync_entry(DiskInterface *disk, cache *cache, journal_entry_t *entry)
             break;
         case MKNOD:
             printf("MKNOD\n");
-            _mknod(disk, cache, entry->mknod.path, entry->mknod.mode, entry->mknod.btree_block, true);
+            _mknod(disk, cache, entry->mknod.path, entry->mknod.mode, entry->mknod.btree_block, true, &entry->mknod.inode_number);
             Inode node;
-            InodeBtreePair *pair = item_search(disk, cache, entry->mknod.path);
-            inode_read(disk, cache, pair->inode_number, &node);
+            //InodeBtreePair *pair = item_search(disk, cache, entry->mknod.path);
+            inode_read(disk, cache, entry->mknod.inode_number, &node);
             node.creation_time = time(NULL);
     	    node.mode = entry->mknod.mode;
     	    inode_write(disk, cache, &node, true);
-    	    arc4random_buf(pair, sizeof(struct InodeBtreePair));
-            free(pair);
+    	    //arc4random_buf(pair, sizeof(struct InodeBtreePair));
+            //free(pair);
             if ( FILE_TYPE_DIRECTORY == ( entry->mknod.mode & S_IFMT) )
             {
             	_truncate(disk, cache, entry->mknod.path, 0, true);
@@ -144,8 +146,8 @@ void sync_journal(DiskInterface *disk, cache *cache)
 
     for (int i = 0; i < calculate_journal_size(&sb); i++)
     {
-        int head = (sb.journal_head == ( calculate_journal_size(&sb) - 1 ) ) ? 0 : sb.journal_head + 1;
-        block_type = (block_type_t*)get_block(disk, cache, 0, sb.journal_start + head);
+        //int head = (sb.journal_head == ( calculate_journal_size(&sb) - 1 ) ) ? 0 : sb.journal_head + 1;
+        block_type = (block_type_t*)get_block(disk, cache, 0, sb.journal_start + sb.journal_head);
         prev_entry = (journal_entry_t*)(block_type + 1);
 
         if (*block_type != BLOCK_TYPE_JOURNAL) {

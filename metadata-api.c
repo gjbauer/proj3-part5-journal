@@ -3,20 +3,23 @@
 #include "directory.h"
 #include "hash.h"
 
-int _mknod(DiskInterface *disk, cache *cache, const char *path, mode_t mode, uint64_t btree_block, bool write_through)
+int _mknod(DiskInterface *disk, cache *cache, const char *path, mode_t mode, uint64_t btree_block, bool write_through, int64_t *out_inode)
 {
     int rv = -1;
     char *parent = parent_path(path, count_l(path));
     char *name = get_name(path);
     DirEntry stack_entry;
     Inode node;
-    bool exists = directory_exists_entry(disk, cache, parent, name, &stack_entry);
     
-    InodeBtreePair *pair = item_search(disk, cache, parent);
+    bool exists = directory_exists_entry(disk, cache, parent, name, &stack_entry);
     
     if (exists)
     {
-    	if (!btree_search(disk, cache, pair->btree_block, path_hash(name)))
+    	printf("exists!\n");
+    	InodeBtreePair *pair = item_search(disk, cache, parent);
+    	
+    	uint64_t block_num = btree_search(disk, cache, pair->btree_block, path_hash(name));
+    	if (!block_num)
     	{
     		if ( FILE_TYPE_DIRECTORY == ( mode & S_IFMT) )
     		{
@@ -27,6 +30,24 @@ int _mknod(DiskInterface *disk, cache *cache, const char *path, mode_t mode, uin
     		    btree_insert(disk, cache, pair->btree_block, path_hash(name), stack_entry.inode_number, ( mode & S_IFMT));
     		}
     	}
+    	
+    	BTreeNode tree_node;
+    	
+    	block_num = btree_search(disk, cache, pair->btree_block, path_hash(name));
+    	
+    	if ( FILE_TYPE_DIRECTORY == ( mode & S_IFMT) )
+    	{
+    		btree_node_read(disk, cache, btree_block, &tree_node);
+    	}
+    	else
+    	{
+    		btree_node_read(disk, cache, block_num, &tree_node);
+    	}
+    	
+    	tree_node.value = *out_inode;
+    	
+    	btree_node_write(disk, cache, &tree_node);
+    	
     	btree_write(disk, cache, pair->btree_block);
         arc4random_buf(pair, sizeof(struct InodeBtreePair));
         arc4random_buf(parent, strlen(parent));
@@ -36,15 +57,16 @@ int _mknod(DiskInterface *disk, cache *cache, const char *path, mode_t mode, uin
         free(name);
         return 0;
     }
-    rv = inode_allocate(disk, cache, mode, write_through);
+    rv = inode_allocate(disk, cache, mode, true);
     if (-1 == rv) goto print;
     rv = inode_read(disk, cache, rv, &node);
     if (rv) goto print;
+    if (out_inode) *out_inode = node.inode_number;
     node.creation_time = time(NULL);
     node.mode = mode;
     rv = inode_write(disk, cache, &node, write_through);
     if (rv) goto print;
-    rv = directory_add_entry(disk, cache, parent, name, node.inode_number, ( mode & S_IFMT), true);
+    rv = directory_add_entry(disk, cache, parent, name, node.inode_number, ( mode & S_IFMT), write_through);
 print:
     arc4random_buf(&node, sizeof(struct Inode));
     arc4random_buf(parent, sizeof(strlen(parent)));
@@ -85,28 +107,28 @@ int _link(DiskInterface *disk, cache *cache, const char *from, const char *to, b
 {
     int rv = -1;
     InodeBtreePair *from_pair = item_search(disk, cache, from);
-    Inode from_inode;
-    inode_read(disk, cache, from_pair->inode_number, &from_inode);
+    Inode inode;
+    inode_read(disk, cache, from_pair->inode_number, &inode);
     char *parent = parent_path(to, count_l(to));
     char *name = get_name(to);
     
-    InodeBtreePair *pair = item_search(disk, cache, parent);
     DirEntry stack_entry;
-    Inode stack_node;
     
     if (directory_exists_entry(disk, cache, parent, name, &stack_entry))
     {
-    	rv = inode_read(disk, cache, stack_entry.inode_number, &stack_node);
+        InodeBtreePair *pair = item_search(disk, cache, parent);
+    	inode.reference_count++;
+        inode_write(disk, cache, &inode, true);
     	if (!btree_search(disk, cache, pair->btree_block, path_hash(name)))
     	{
-    		btree_insert(disk, cache, pair->btree_block, path_hash(name), stack_entry.inode_number, ( stack_node.mode & S_IFMT));
+    		btree_insert(disk, cache, pair->btree_block, path_hash(name), stack_entry.inode_number, ( inode.mode & S_IFMT));
     	}
     	btree_write(disk, cache, pair->btree_block);
     	arc4random_buf(pair, sizeof(struct InodeBtreePair));
         free(pair);
     	arc4random_buf(from_pair, sizeof(struct InodeBtreePair));
         free(from_pair);
-        arc4random_buf(&from_inode, sizeof(struct Inode));
+        arc4random_buf(&inode, sizeof(struct Inode));
         arc4random_buf(parent, strlen(parent));
         arc4random_buf(name, strlen(name));
         free(parent);
@@ -115,15 +137,13 @@ int _link(DiskInterface *disk, cache *cache, const char *from, const char *to, b
     }
     char *to_parent = parent_path(to, count_l(to));
     char *to_name = get_name(to);
-    rv = directory_add_entry(disk, cache, to_parent, to_name, from_pair->inode_number, (FileType) ( from_inode.mode & S_IFMT), write_through);
+    rv = directory_add_entry(disk, cache, to_parent, to_name, from_pair->inode_number, (FileType) ( inode.mode & S_IFMT), write_through);
     if (!rv)
     {
-        from_inode.reference_count++;
-        inode_write(disk, cache, &from_inode, true);
+        inode.reference_count++;
+        inode_write(disk, cache, &inode, write_through);
     }
-    arc4random_buf(pair, sizeof(struct InodeBtreePair));
-    free(pair);
-    arc4random_buf(&from_inode, sizeof(struct Inode));
+    arc4random_buf(&inode, sizeof(struct Inode));
     arc4random_buf(parent, strlen(parent));
     arc4random_buf(name, strlen(name));
     free(parent);
