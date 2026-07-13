@@ -124,8 +124,9 @@ nbtrfs_mknod(const char *path, mode_t mode, dev_t rdev)
     journal_entry_t entry;
     entry.type = MKNOD;
     entry.synced = false;
-    strcpy(entry.mknod.path, path);
+    strncpy(entry.mknod.path, path, PATH_MAX);
     entry.mknod.mode = mode;
+    entry.mknod.inode_number = 0;
     rv = _mknod(disk, cache_s, path, mode, 0, false, &entry.mknod.inode_number);
     initialize_journal_entry(disk, cache_s, &entry);
     return rv;

@@ -11,6 +11,7 @@ void initialize_journal_entry(DiskInterface *disk, cache *cache, journal_entry_t
     {
         case MKNOD:
             printf("MKNOD\n");
+            entry->mknod.btree_block = 0;
             if ( FILE_TYPE_DIRECTORY == ( entry->mknod.mode & S_IFMT) )
             {
                 // For directories, find the inode number from the path
@@ -90,15 +91,82 @@ void sync_entry(DiskInterface *disk, cache *cache, journal_entry_t *entry)
             break;
         case MKNOD:
             printf("MKNOD\n");
-            _mknod(disk, cache, entry->mknod.path, entry->mknod.mode, entry->mknod.btree_block, true, &entry->mknod.inode_number);
+            
+            //_mknod(disk, cache, entry->mknod.path, entry->mknod.mode, entry->mknod.btree_block, true, &entry->mknod.inode_number);
+	    
+	    if (!entry->mknod.inode_number)
+            {
+            	_mknod(disk, cache, entry->mknod.path, entry->mknod.mode, entry->mknod.btree_block, true, &entry->mknod.inode_number);
+            	return;
+            }
             Inode node;
-            //InodeBtreePair *pair = item_search(disk, cache, entry->mknod.path);
             inode_read(disk, cache, entry->mknod.inode_number, &node);
             node.creation_time = time(NULL);
     	    node.mode = entry->mknod.mode;
     	    inode_write(disk, cache, &node, true);
-    	    //arc4random_buf(pair, sizeof(struct InodeBtreePair));
-            //free(pair);
+    	    
+    	    char *parent = parent_path(entry->mknod.path, count_l(entry->mknod.path));
+	    char *name = get_name(entry->mknod.path);
+	    
+            InodeBtreePair *pair = item_search(disk, cache, parent);
+            
+            uint64_t block_num = btree_search(disk, cache, pair->btree_block, path_hash(name));
+            
+            BTreeNode tree_node;
+            
+            if ( !block_num )
+    	    {
+    	        if ( FILE_TYPE_DIRECTORY == ( entry->mknod.mode & S_IFMT) )
+    		{
+    		        BTreeNode *second_tree_node = btree_node_create(disk, cache, false, &block_num);
+    		        if (block_num)
+    		        {
+	    		        btree_insert(disk, cache, pair->btree_block, path_hash(name), block_num, ( entry->mknod.mode & S_IFMT));
+	    		        
+	    		        btree_node_read(disk, cache, block_num, &tree_node);
+	    		        
+	    		        tree_node.type = FILE_TYPE_DIRECTORY;
+	    		        
+	    		        tree_node.value = entry->mknod.inode_number;
+	    		        
+	    		        btree_node_write(disk, cache, &tree_node);
+	    		}
+	    	        else
+	    	    	    goto clear;
+    		}
+    		else
+    		{
+    		    btree_insert(disk, cache, pair->btree_block, path_hash(name), entry->mknod.inode_number, ( entry->mknod.mode & S_IFMT));
+    		}
+    	    }
+    	    else
+    	    {
+    	    	btree_node_read(disk, cache, block_num, &tree_node);
+    		if ( FILE_TYPE_DIRECTORY == tree_node.type)
+    		{
+    		    uint64_t page = 0;
+    		    BTreeNode *second_tree_node = btree_node_create(disk, cache, false, &page);
+    		    if (page)
+	    		tree_node.value = page;
+	    	    else goto clear;
+    		    btree_node_write(disk, cache, &tree_node);
+    		    
+    		    btree_node_read(disk, cache, page, &tree_node);
+    		    tree_node.type = FILE_TYPE_DIRECTORY;
+    		    tree_node.value = entry->mknod.inode_number;
+    		}
+    		else
+    		    tree_node.value = entry->mknod.inode_number;
+    		btree_node_write(disk, cache, &tree_node);
+    		btree_write(disk, cache, pair->btree_block);
+    	    }
+clear:
+    	    arc4random_buf(pair, sizeof(struct InodeBtreePair));
+            free(pair);
+            arc4random_buf(parent, strlen(parent));
+	    arc4random_buf(name, strlen(name));
+	    free(parent);
+	    free(name);
             if ( FILE_TYPE_DIRECTORY == ( entry->mknod.mode & S_IFMT) )
             {
             	_truncate(disk, cache, entry->mknod.path, 0, true);

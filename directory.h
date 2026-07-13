@@ -20,7 +20,6 @@ typedef struct DirectoryBlock {
 } DirectoryBlock;
 
 // Directory operations
-int directory_sync_entry(DiskInterface* disk, cache *cache, const char *path, const char* name);
 int directory_add_entry(DiskInterface* disk, cache *cache, const char *path, const char* name, uint64_t target_inode, FileType type, bool write_through);
 int directory_remove_entry(DiskInterface* disk, cache *cache, const char *path, const char* name, bool write_through);
 bool directory_exists_entry(DiskInterface* disk, cache *cache, const char *path, const char* name, DirEntry *stack_entry);
