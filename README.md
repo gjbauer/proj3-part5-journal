@@ -84,7 +84,7 @@ Ubuntu ARM64:
 
 ## Known Issues and Missing Features
 
-The remaining issues are all related to the journal and the remaining 5 tests that needs to be made to pass without causing regressions for the safe conditions. All known memory corruption and leaks have been snuffed out with the help of an Address Sanitizer.
+All known memory corruption and leaks have been snuffed out with the help of an Address Sanitizer.
 
 There are three pressing missing features:
 
