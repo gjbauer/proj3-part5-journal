@@ -27,8 +27,8 @@ sub mount {
         open(my $fh, ">>", $log_file) or die "Can't open $log_file: $!";
         
         # 2. Redirect STDOUT and STDERR to the log file
-        #open(STDOUT, ">&", $fh) or die "Can't dup STDOUT: $!";
-        #open(STDERR, ">&", $fh) or die "Can't dup STDERR: $!";
+        open(STDOUT, ">&", $fh) or die "Can't dup STDOUT: $!";
+        open(STDERR, ">&", $fh) or die "Can't dup STDERR: $!";
         
         # 3. Replace child process with FUSE mount
         exec("./fuse", "-s", "-f", "mnt", "my.img") or die "Exec failed: $!";
@@ -94,7 +94,7 @@ sub p1ok {
         ok(0, $msg);
     }
 }
-=pod
+
 my $msg0 = "hello, one";
 write_text("one.txt", $msg0);
 ok(-e "mnt/one.txt", "File1 exists.");
@@ -200,13 +200,13 @@ ok($huge0 eq $huge1, "Read back 40k correctly.");
 my $huge2 = read_text_slice("40k.txt", 10, 8050);
 $right = "ng is four";
 ok($huge2 eq $right, "Read with offset & length");
-=cut
+
 system("mkdir -p mnt/dir1/dir2/dir3/dir4/dir5");
 my $hi0 = "hello there";
 write_text("dir1/dir2/dir3/dir4/dir5/hello.txt", $hi0);
 my $hi1 = read_text("dir1/dir2/dir3/dir4/dir5/hello.txt");
 ok($hi0 eq $hi1, "nested directories");
-=pod
+
 kill_mount($pid);
 unmount();
 $pid = mount();
@@ -254,7 +254,7 @@ mount();
 
 my $mm = `ls mnt/numbers | wc -l`;
 ok($mm == 150, "deleted 150 files");
-=cut
+
 unmount();
 
 system("(make clean 2>&1) > /dev/null");

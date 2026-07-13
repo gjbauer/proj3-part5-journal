@@ -20,6 +20,7 @@ void initialize_journal_entry(DiskInterface *disk, cache *cache, journal_entry_t
                 entry->mknod.btree_block = pair->btree_block;
                 arc4random_buf(pair, sizeof(struct InodeBtreePair));
                 free(pair);
+                _truncate(disk, cache, entry->mknod.path, 0, true);
             }
             break;
         case UNLINK:
@@ -91,8 +92,6 @@ void sync_entry(DiskInterface *disk, cache *cache, journal_entry_t *entry)
             break;
         case MKNOD:
             printf("MKNOD\n");
-            
-            //_mknod(disk, cache, entry->mknod.path, entry->mknod.mode, entry->mknod.btree_block, true, &entry->mknod.inode_number);
 	    
 	    if (!entry->mknod.inode_number)
             {
@@ -144,22 +143,29 @@ void sync_entry(DiskInterface *disk, cache *cache, journal_entry_t *entry)
     	    	btree_node_read(disk, cache, block_num, &tree_node);
     		if ( FILE_TYPE_DIRECTORY == tree_node.type)
     		{
-    		    uint64_t page = 0;
-    		    BTreeNode *second_tree_node = btree_node_create(disk, cache, false, &page);
-    		    if (page)
-	    		tree_node.value = page;
-	    	    else goto clear;
-    		    btree_node_write(disk, cache, &tree_node);
+    		    tree_node.value = entry->mknod.btree_block;
+	    	    btree_node_write(disk, cache, &tree_node);
     		    
-    		    btree_node_read(disk, cache, page, &tree_node);
+    		    btree_node_read(disk, cache, entry->mknod.btree_block, &tree_node);
+    		    if (tree_node.is_leaf)
+    		    {
+    		    	btree_node_read(disk, cache, block_num, &tree_node);
+    		    	uint64_t page = 0;
+    		        BTreeNode *second_tree_node = btree_node_create(disk, cache, false, &page);
+    		        if (page)
+	    		    tree_node.value = page;
+	    		else goto clear;
+	    	        btree_node_write(disk, cache, &tree_node);
+	    	        btree_node_read(disk, cache, page, &tree_node);
+    		    }
     		    tree_node.type = FILE_TYPE_DIRECTORY;
     		    tree_node.value = entry->mknod.inode_number;
     		}
     		else
     		    tree_node.value = entry->mknod.inode_number;
     		btree_node_write(disk, cache, &tree_node);
-    		btree_write(disk, cache, pair->btree_block);
     	    }
+    	    btree_write(disk, cache, pair->btree_block);
 clear:
     	    arc4random_buf(pair, sizeof(struct InodeBtreePair));
             free(pair);
@@ -167,10 +173,6 @@ clear:
 	    arc4random_buf(name, strlen(name));
 	    free(parent);
 	    free(name);
-            if ( FILE_TYPE_DIRECTORY == ( entry->mknod.mode & S_IFMT) )
-            {
-            	_truncate(disk, cache, entry->mknod.path, 0, true);
-            }
             break;
         case UNLINK:
             printf("UNLINK\n");
