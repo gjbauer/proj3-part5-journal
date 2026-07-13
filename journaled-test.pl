@@ -211,7 +211,7 @@ kill_mount($pid);
 unmount();
 $pid = mount();
 
-ok(-f "dir1/dir2/dir3/dir4/dir5/hello.txt", "file in nested directories exists after remount");
+ok(-f "mnt/dir1/dir2/dir3/dir4/dir5/hello.txt", "file in nested directories exists after remount");
 
 system("mkdir mnt/numbers");
 
@@ -225,7 +225,7 @@ unmount();
 $pid = mount();
 
 my $nn = `ls mnt/numbers | wc -l`;
-ok($nn == 50, "created 300 files");
+ok($nn == 300, "created 300 files");
 
 for my $ii (1..300) {
     write_text("numbers/$ii.num", "$ii");
@@ -244,12 +244,9 @@ for my $ii (1..150) {
 
 kill_mount($pid);
 unmount();
-$pid = mount();
 
 ok(!-d "mnt/numbers", "numbers dir doesn't exist after umount");
 
-kill_mount($pid);
-unmount();
 mount();
 
 my $mm = `ls mnt/numbers | wc -l`;
