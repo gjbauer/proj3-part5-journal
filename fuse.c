@@ -13,6 +13,7 @@
 
 #define FUSE_USE_VERSION 26
 #include <fuse.h>
+#include <fuse/fuse_lowlevel.h> 
 
 #include "hash.h"
 #include "inode.h"
@@ -136,6 +137,11 @@ int
 nbtrfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 {
     int rv = nbtrfs_mknod(path, mode | S_IFREG, 0);
+    // Force direct I/O on this file descriptor to bypass kernel page cache
+    fi->direct_io = 1; 
+    
+    // Force FUSE to invalidate existing cached data pages for this file
+    fi->keep_cache = 0; 
     printf("create(%s, %04o) -> %d\n", path, mode, rv);
     return rv;
 }
@@ -192,7 +198,13 @@ nbtrfs_rename(const char *from, const char *to)
     strcpy(entry.rename.from, from);
     strcpy(entry.rename.to, to);
     initialize_journal_entry(disk, cache_s, &entry);
+    
     int rv = _rename(disk, cache_s, from, to, false);
+    
+    // Get the session
+    struct fuse_context *ctx = fuse_get_context();
+    struct fuse_session *se = fuse_get_session(ctx->fuse);
+    
     printf("rename(%s => %s) -> %d\n", from, to, rv);
     return rv;
 }
@@ -228,7 +240,11 @@ int
 nbtrfs_open(const char *path, struct fuse_file_info *fi)
 {
     int rv = 0;
+    // Force direct I/O on this file descriptor to bypass kernel page cache
+    fi->direct_io = 1; 
     
+    // Force FUSE to invalidate existing cached data pages for this file
+    fi->keep_cache = 0; 
     printf("open(%s) -> %d\n", path, rv);
     return rv;
 }
@@ -241,8 +257,16 @@ nbtrfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
     InodeBtreePair *pair = item_search(disk, cache_s, path);
     Inode node;
     
-    if (!pair->inode_number && !pair->btree_block) return -ENOENT;
-    else if (pair->btree_block) return -EISDIR;
+    if (!pair->inode_number && !pair->btree_block)
+    {
+    	rv = -ENOENT;
+    	goto exit;
+    }
+    else if (pair->btree_block)
+    {
+    	rv = -EISDIR;
+    	goto exit;
+    }
     
     rv = inode_read(disk, cache_s, pair->inode_number, &node);
     if (rv) {
@@ -251,7 +275,7 @@ nbtrfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
     
     // Check if offset is beyond file size
     if (offset >= node.size) {
-        return 0; // Nothing to read
+        goto exit; // Nothing to read
     }
     
     // Adjust size if it would read beyond the end of the file
@@ -260,7 +284,7 @@ nbtrfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
     }
     
     if (size == 0) {
-        return 0;
+        goto exit;
     }
     
     int bytes_read = 0;
@@ -319,21 +343,27 @@ exit:
 int
 nbtrfs_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
+    int bytes_written = 0;
     InodeBtreePair *pair = item_search(disk, cache_s, path);
     Inode node;
     
     if (!pair->inode_number && !pair->btree_block)
     {
         nbtrfs_mknod(path, S_IFREG | 0644, 0);
+        arc4random_buf(pair, sizeof(struct InodeBtreePair));
+    	free(pair);
         pair = item_search(disk, cache_s, path);
     }
-    else if (pair->btree_block) return -EISDIR;
+    else if (pair->btree_block)
+    {
+    	bytes_written = -EISDIR;
+    	goto exit;
+    }
     
     if (inode_read(disk, cache_s, pair->inode_number, &node)) {
         goto exit;
     }
     
-    int bytes_written = 0;
     int remaining = size;
     off_t current_offset = offset;
     
@@ -356,7 +386,6 @@ nbtrfs_write(const char *path, const char *buf, size_t size, off_t offset, struc
             *block_type = BLOCK_TYPE_DATA;
             // Clear the rest of the block
             memset(block_type + 1, 0, BLOCK_SIZE - sizeof(block_type_t));
-            //write_block(disk, cache_s, block_type, node.inode_number, pnum);
             inode_set_block(disk, cache_s, &node, page_index, pnum);
             inode_write(disk, cache_s, &node, false);
             journal_entry_t entry;

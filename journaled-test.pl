@@ -162,6 +162,9 @@ $files = `ls mnt`;
 ok($files =~ /abc\.txt/, "have abc.txt");
 
 my $msg4 = read_text("abc.txt");
+chomp($msg2);
+chomp($msg4);
+say "# msg2 length: " . length($msg2) . ", msg4 length: " . length($msg4);
 say "# '$msg2' eq '$msg4'?";
 ok($msg2 eq $msg4, "Read back data after rename.");
 =pod
