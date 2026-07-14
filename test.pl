@@ -51,7 +51,7 @@ sub read_text_slice {
     return $data;
 }
 
-system("rm -f data.nufs test.log");
+system("rm -f test.log");
 
 say "#           == Basic Tests ==";
 mount();

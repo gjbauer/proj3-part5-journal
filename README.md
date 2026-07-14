@@ -77,7 +77,6 @@ Ubuntu ARM64:
 The current state of the journal is still not entirely stable, and it currently fails 5 out of 55 tests, though that is not a fair representation of the state of its stability, as the files it checks for values in tests 24-53 are not written within the filesystem itself, but the parent filesystem. That means it passes more like 20 out of 25.
 
 macOS:
- - MACOS IS OUT OF DATE
 ![](screen1.png)
 Ubuntu ARM64:
 ![](screen1-ubuntu.png)
