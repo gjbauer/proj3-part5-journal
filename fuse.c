@@ -201,9 +201,15 @@ nbtrfs_rename(const char *from, const char *to)
     
     int rv = _rename(disk, cache_s, from, to, false);
     
+#ifdef __APPLE__
     // Get the session
     struct fuse_context *ctx = fuse_get_context();
-    struct fuse_session *se = fuse_get_session(ctx->fuse);
+    
+    int result = fuse_invalidate_path(ctx->fuse, to);
+    
+    if (!result) printf("Successfully invalidated kernel cache for: %s\n", to);
+    else fprintf(stderr, "ERROR: Failed to invalidate cache for %s\n", to);
+#endif
     
     printf("rename(%s => %s) -> %d\n", from, to, rv);
     return rv;
