@@ -71,6 +71,7 @@ int _link(DiskInterface *disk, cache *cache, const char *from, const char *to, b
     {
         InodeBtreePair *pair = item_search(disk, cache, parent);
     	inode.reference_count++;
+        printf("Reference count = %llu\n", inode.reference_count);
         inode_write(disk, cache, &inode, true);
     	if (!btree_search(disk, cache, pair->btree_block, path_hash(name)))
     	{
@@ -94,6 +95,7 @@ int _link(DiskInterface *disk, cache *cache, const char *from, const char *to, b
     if (!rv)
     {
         inode.reference_count++;
+        printf("Reference count = %llu\n", inode.reference_count);
         inode_write(disk, cache, &inode, write_through);
     }
     arc4random_buf(&inode, sizeof(struct Inode));
@@ -226,7 +228,7 @@ int _rename(DiskInterface *disk, cache *cache, const char *from, const char *to,
     	rv = _link(disk, cache, from, to, write_through);
     	if (rv) goto cleanup;
     	rv = _unlink(disk, cache, from, write_through);
-    } else rv = 0;
+    }
 cleanup:
     arc4random_buf(pair, sizeof(struct InodeBtreePair));
     free(pair);

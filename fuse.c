@@ -228,6 +228,7 @@ int
 nbtrfs_open(const char *path, struct fuse_file_info *fi)
 {
     int rv = 0;
+    
     printf("open(%s) -> %d\n", path, rv);
     return rv;
 }
@@ -363,6 +364,7 @@ nbtrfs_write(const char *path, const char *buf, size_t size, off_t offset, struc
             entry.write.inode_number = node.inode_number;
             entry.write.block_index = page_index;
             entry.write.physical_block = pnum;
+            entry.write.size = size;
             initialize_journal_entry(disk, cache_s, &entry);
         }
         

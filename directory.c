@@ -178,6 +178,7 @@ int directory_remove_entry(DiskInterface* disk, cache *cache, const char *path, 
                     entry->active = false;
                     number_of_entries--;
                     inode_read(disk, cache, entry->inode_number, &file_node);
+                    printf("Reference count = %llu\n", file_node.reference_count);
                     if (1 == file_node.reference_count)
                     {
                         if (inode_free(disk, cache, entry->inode_number, write_through))

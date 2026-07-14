@@ -61,6 +61,7 @@ typedef struct journal_entry_t
             int64_t inode_number;
             uint64_t block_index;
             uint64_t physical_block;
+            size_t  size;
         } write;
         struct
         {
