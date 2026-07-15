@@ -155,11 +155,9 @@ if ($exit_status eq 0) {
 }
 
 
-if ($^O ne 'darwin') {
-    # Journal only covers metadata, so we have to write the data again
-    # macOS maintains a cache, which makes this counter-productive
-    write_text("two.txt", $msg2);
-}
+# Kernel VFS maintains a cache, so data still remains across mounts
+# Not useful when simulating a crash
+
 $exit_status = system("mv mnt/two.txt mnt/abc.txt") >> 8;
 ok($exit_status eq 0, "moved two.txt");
 $files = `ls mnt`;
