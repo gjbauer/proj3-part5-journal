@@ -135,6 +135,11 @@ nbtrfs_mknod(const char *path, mode_t mode, dev_t rdev)
 int
 nbtrfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 {
+    // Force direct I/O on this file descriptor to bypass kernel page cache
+    fi->direct_io = 1; 
+    
+    // Force FUSE to invalidate existing cached data pages for this file
+    fi->keep_cache = 0; 
     int rv = nbtrfs_mknod(path, mode | S_IFREG, 0);
     printf("create(%s, %04o) -> %d\n", path, mode, rv);
     return rv;
@@ -230,6 +235,11 @@ int
 nbtrfs_open(const char *path, struct fuse_file_info *fi)
 {
     int rv = 0;
+    // Force direct I/O on this file descriptor to bypass kernel page cache
+    fi->direct_io = 1; 
+    
+    // Force FUSE to invalidate existing cached data pages for this file
+    fi->keep_cache = 0; 
     printf("open(%s) -> %d\n", path, rv);
     return rv;
 }

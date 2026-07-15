@@ -94,7 +94,7 @@ sub p1ok {
         ok(0, $msg);
     }
 }
-
+=pod
 my $msg0 = "hello, one";
 write_text("one.txt", $msg0);
 ok(-e "mnt/one.txt", "File1 exists.");
@@ -221,7 +221,7 @@ unmount();
 $pid = mount();
 
 ok(-f "mnt/dir1/dir2/dir3/dir4/dir5/hello.txt", "file in nested directories exists after remount");
-
+=cut
 system("mkdir mnt/numbers");
 
 for my $ii (1..300) {
@@ -234,6 +234,8 @@ unmount();
 $pid = mount();
 
 my $nn = `ls mnt/numbers | wc -l`;
+system("ls mnt/numbers");
+say "# '$nn' eq '300'?";
 ok($nn == 300, "created 300 files");
 
 for my $ii (1..300) {

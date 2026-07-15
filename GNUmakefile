@@ -28,7 +28,7 @@ format: mkfs test_image
 	./mkfs.nbtrfs my.img
 	
 mount: fuse
-	./fuse -s -f mnt my.img
+	./fuse -s -f -o direct_io mnt my.img
 
 unmount:
 	sudo umount mnt
@@ -37,7 +37,7 @@ mkfs:
 	clang $(CFLAGS) -o mkfs.nbtrfs $(COMMON_FILES) mkfs.c -DCACHE_DISABLED
 
 test_image:
-	dd if=/dev/zero of=my.img bs=1M count=20
+	dd if=/dev/zero of=my.img bs=1M count=40
 
 clean:
 	rm -rf $(RM_FILES)
