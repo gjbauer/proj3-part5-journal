@@ -83,7 +83,7 @@ Ubuntu ARM64:
 
 ## Known Issues and Missing Features
 
-All known memory corruption and leaks have been snuffed out with the help of an Address Sanitizer. The journal is verified working on macOS and Linux. There is one bug that appears in the safe condition tests on Linux.
+All known memory corruption and leaks have been snuffed out with the help of an Address Sanitizer.
 
 There are three pressing missing features:
 
