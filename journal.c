@@ -206,6 +206,15 @@ clear:
     disk_write_block(disk, entry->block_number, block_type);
 }
 
+void mark_entry_synced(DiskInterface *disk, cache *cache, journal_entry_t *entry)
+{
+    entry->synced = true;
+    
+    block_type_t *block_type;
+    block_type = ( (block_type_t*) entry - 1 );
+    disk_write_block(disk, entry->block_number, block_type);
+}
+
 void sync_journal(DiskInterface *disk, cache *cache)
 {
     Superblock sb;
@@ -216,7 +225,6 @@ void sync_journal(DiskInterface *disk, cache *cache)
 
     for (int i = 0; i < calculate_journal_size(&sb); i++)
     {
-        //int head = (sb.journal_head == ( calculate_journal_size(&sb) - 1 ) ) ? 0 : sb.journal_head + 1;
         block_type = (block_type_t*)get_block(disk, cache, 0, sb.journal_start + sb.journal_head);
         prev_entry = (journal_entry_t*)(block_type + 1);
 
@@ -229,6 +237,36 @@ void sync_journal(DiskInterface *disk, cache *cache)
         if (prev_entry->type != UNINITIALIZED && !prev_entry->synced) {
             printf("Found existing journal entry, syncing...\n");
             sync_entry(disk, cache, prev_entry);
+        }
+
+        if (sb.journal_head == ( calculate_journal_size(&sb) - 1 ) ) sb.journal_head = 0;
+        else sb.journal_head++;
+        superblock_write(disk, cache, &sb, true);
+    }
+}
+
+void mark_journal_synced(DiskInterface *disk, cache *cache)
+{
+    Superblock sb;
+    journal_entry_t *prev_entry;
+    block_type_t *block_type;
+
+    superblock_read(disk, cache, &sb);
+
+    for (int i = 0; i < calculate_journal_size(&sb); i++)
+    {
+        block_type = (block_type_t*)get_block(disk, cache, 0, sb.journal_start + sb.journal_head);
+        prev_entry = (journal_entry_t*)(block_type + 1);
+
+        if (*block_type != BLOCK_TYPE_JOURNAL) {
+            fprintf(stderr, "ERROR: Block %llu is not a journal block! type=0x%x\n", sb.journal_start + sb.journal_head, *block_type);
+            // Don't proceed - journal is corrupted
+            return;
+        }
+
+        if (prev_entry->type != UNINITIALIZED && !prev_entry->synced) {
+            printf("Found existing journal entry, marking as synced...\n");
+            mark_entry_synced(disk, cache, prev_entry);
         }
 
         if (sb.journal_head == ( calculate_journal_size(&sb) - 1 ) ) sb.journal_head = 0;

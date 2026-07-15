@@ -77,4 +77,6 @@ void sync_entry(DiskInterface *disk, cache *cache, journal_entry_t *entry);
 
 void sync_journal(DiskInterface *disk, cache *cache);
 
+void mark_journal_synced(DiskInterface *disk, cache *cache);
+
 #endif
