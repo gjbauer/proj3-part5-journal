@@ -78,5 +78,5 @@ int calculate_inode_table_size(Superblock *superblock)
 
 int calculate_journal_size(Superblock *superblock)
 {
-    return 2;
+    return (superblock->total_blocks / 10);
 }

@@ -53,7 +53,7 @@ sub unmount {
 
 sub write_text {
     my ($name, $data) = @_;
-    open my $fh, ">>", "mnt/$name" or return;
+    open my $fh, ">", "mnt/$name" or return;
     $fh->say($data);
     close $fh;
 }
@@ -155,9 +155,11 @@ if ($exit_status eq 0) {
 }
 
 
-# Kernel VFS maintains a cache, so data still remains across mounts
-# Not useful when simulating a crash
-
+if ($^O ne 'darwin') {
+    # Journal only covers metadata, so we have to write the data again
+    # macOS maintains a cache, which makes this counter-productive
+    write_text("two.txt", $msg2);
+}
 $exit_status = system("mv mnt/two.txt mnt/abc.txt") >> 8;
 ok($exit_status eq 0, "moved two.txt");
 $files = `ls mnt`;
@@ -191,6 +193,11 @@ $pid = mount();
 
 ok(-d "mnt/foo", "Directory persists after remount");
 
+if ($^O ne 'darwin') {
+    # Journal only covers metadata, so we have to write the data again
+    # macOS maintains a cache, which makes this counter-productive
+    write_text("def.txt", $msg2);
+}
 system("cp mnt/def.txt mnt/foo/abc.txt");
 my $msg7 = read_text("foo/abc.txt");
 say "# msg2 length: " . length($msg2) . ", msg4 length: " . length($msg7);
