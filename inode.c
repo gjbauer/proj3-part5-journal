@@ -222,6 +222,7 @@ int inode_set_block(DiskInterface* disk, cache *cache, Inode* inode, uint64_t bl
     if (block_index < 12)
     {
         inode->direct_blocks[block_index] = physical_block;
+        inode_write(disk, cache, &(*inode), true);
         rv = 0;
     }
     else if (block_index <= ( USABLE_BLOCK_SIZE / sizeof(uint64_t) ) )
@@ -232,11 +233,14 @@ int inode_set_block(DiskInterface* disk, cache *cache, Inode* inode, uint64_t bl
             if (!inode->indirect_block) return rv;
             block_type_t *block_type = get_block(disk, cache, inode->inode_number, inode->indirect_block);
             *block_type = BLOCK_TYPE_DATA;
-            inode_write(disk, cache, &(*inode), false);
+            inode_write(disk, cache, &(*inode), true);
             inode_read(disk, cache, inode->inode_number, &(*inode));
             uint64_t *sind = (uint64_t*)( block_type + 1 );
             memset(sind, 0, USABLE_BLOCK_SIZE);
             write_block(disk, cache, block_type, inode->inode_number, inode->indirect_block);
+            #ifndef CACHE_DISABLED
+            disk_write_block(disk, inode->indirect_block, block_type);
+            #endif
         }
         
         // Now set the specific block pointer
@@ -245,9 +249,15 @@ int inode_set_block(DiskInterface* disk, cache *cache, Inode* inode, uint64_t bl
         sind += ( block_index - 12 );
         *sind = physical_block;
         write_block(disk, cache, block_type, inode->inode_number, inode->indirect_block);
+        #ifndef CACHE_DISABLED
+        disk_write_block(disk, inode->indirect_block, block_type);
+        #endif
         block_type = get_block(disk, cache, inode->inode_number, physical_block);
         *block_type = BLOCK_TYPE_DATA;
         write_block(disk, cache, block_type, inode->inode_number, physical_block);
+        #ifndef CACHE_DISABLED
+        disk_write_block(disk, physical_block, block_type);
+        #endif
         rv = 0;
     }
     // TODO: Implement double indirect blocks
