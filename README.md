@@ -83,7 +83,7 @@ Ubuntu ARM64:
 
 ## Known Issues and Missing Features
 
-All known memory corruption and leaks have been snuffed out with the help of an Address Sanitizer. The journql is verified working on Linux, but still needs some work to get to pass on macOS.
+All known memory corruption and leaks have been snuffed out with the help of an Address Sanitizer. The journal is verified working on macOS, but has one bug on Linux.
 
 There are three pressing missing features:
 
