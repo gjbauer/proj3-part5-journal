@@ -28,7 +28,7 @@ format: mkfs test_image
 	./mkfs.nbtrfs my.img
 	
 mount: fuse
-	./fuse -s -f -o direct_io mnt my.img
+	./fuse -s -f mnt my.img
 
 unmount:
 	sudo umount mnt

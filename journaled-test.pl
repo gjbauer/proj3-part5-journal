@@ -27,8 +27,8 @@ sub mount {
         open(my $fh, ">>", $log_file) or die "Can't open $log_file: $!";
         
         # 2. Redirect STDOUT and STDERR to the log file
-        #open(STDOUT, ">&", $fh) or die "Can't dup STDOUT: $!";
-        #open(STDERR, ">&", $fh) or die "Can't dup STDERR: $!";
+        open(STDOUT, ">&", $fh) or die "Can't dup STDOUT: $!";
+        open(STDERR, ">&", $fh) or die "Can't dup STDERR: $!";
         
         # 3. Replace child process with FUSE mount
         exec("./fuse", "-s", "-f", "mnt", "my.img") or die "Exec failed: $!";
@@ -129,34 +129,38 @@ ok($part1 == 9, "No regressions on the easy stuff.");
 
 kill_mount($pid);
 unmount();
-=pod
+
 ok(!-e "mnt/one.txt", "one.txt doesn't exist after umount");
 $files = `ls mnt`;
 ok($files !~ /one\.txt/, "one.txt is not in the directory");
 ok($files !~ /two\.txt/, "two.txt is not in the directory");
-=cut
+
 $pid = mount();
 
 $files = `ls mnt`;
 ok($files =~ /one\.txt/, "one.txt is in the directory still");
 ok($files =~ /two\.txt/, "two.txt is in the directory still");
-=pod
+
 my $exit_status = system("rm mnt/one.txt") >> 8;
 $files = `ls mnt`;
 ok($exit_status eq 0 && $files !~ /one\.txt/, "deleted one.txt");
-=cut
+
 kill_mount($pid);
 unmount();
 $pid = mount();
-=pod
+
 if ($exit_status eq 0) {
     $files = `ls mnt`;
     ok($files !~ /one\.txt/, "one.txt is not present after re-mount");
 }
-=cut
-# Journal only covers metadata, so we have to write the data again
-write_text("two.txt", $msg2);
-my $exit_status = system("mv mnt/two.txt mnt/abc.txt") >> 8;
+
+
+if ($^O ne 'darwin') {
+    # Journal only covers metadata, so we have to write the data again
+    # macOS maintains a cache, which makes this counter-productive
+    write_text("two.txt", $msg2);
+}
+$exit_status = system("mv mnt/two.txt mnt/abc.txt") >> 8;
 ok($exit_status eq 0, "moved two.txt");
 $files = `ls mnt`;
 ok($files =~ /abc\.txt/, "have abc.txt");
@@ -167,7 +171,7 @@ chomp($msg4);
 say "# msg2 length: " . length($msg2) . ", msg4 length: " . length($msg4);
 say "# '$msg2' eq '$msg4'?";
 ok($msg2 eq $msg4, "Read back data after rename.");
-=pod
+
 say "#           == Less Basic Tests ==";
 
 system("ln mnt/abc.txt mnt/def.txt");
@@ -191,6 +195,7 @@ ok(-d "mnt/foo", "Directory persists after remount");
 
 system("cp mnt/def.txt mnt/foo/abc.txt");
 my $msg7 = read_text("foo/abc.txt");
+say "# msg2 length: " . length($msg2) . ", msg4 length: " . length($msg7);
 say "# '$msg2' eq '$msg7'?";
 ok($msg2 eq $msg7, "Read back data from copy in subdir.");
 
@@ -254,7 +259,7 @@ mount();
 
 my $mm = `ls mnt/numbers | wc -l`;
 ok($mm == 150, "deleted 150 files");
-=cut
+
 unmount();
 
 system("(make clean 2>&1) > /dev/null");
